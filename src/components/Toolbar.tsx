@@ -38,6 +38,7 @@ function TrafficLightIcon() {
 const MAIN_ITEMS: { type: string; icon: React.ReactNode; color: string; label: string }[] = [
   { type: 'calendar',       icon: <IoCalendarOutline size={SZ} />,      color: '#0ea5e9', label: '달력' },
   { type: 'roulette',       icon: <IoColorWandOutline size={SZ} />,     color: '#ec4899', label: '마블 룰렛' },
+  { type: 'image',          icon: <IoImageOutline size={SZ} />,         color: '#0ea5e9', label: '이미지' },
   { type: 'random-name',    icon: <IoPersonOutline size={SZ} />,        color: '#0ea5e9', label: '이름 뽑기' },
   { type: 'noise-meter',    icon: <IoVolumeHighOutline size={SZ} />,    color: '#22c55e', label: '소음 측정' },
   { type: 'text',           icon: <IoTextOutline size={SZ} />,          color: '#8b5cf6', label: '텍스트' },
@@ -54,7 +55,6 @@ const EXTRA_ITEMS: typeof MAIN_ITEMS = [
   { type: 'drawing',        icon: <IoBrushOutline size={SZ} />,         color: '#ec4899', label: '그림판' },
   { type: 'qr-code',        icon: <IoQrCodeOutline size={SZ} />,        color: '#6366f1', label: 'QR 코드' },
   { type: 'dice',           icon: <IoDiceOutline size={SZ} />,          color: '#8b5cf6', label: '주사위' },
-  { type: 'image',          icon: <IoImageOutline size={SZ} />,         color: '#0ea5e9', label: '이미지' },
 ];
 
 interface Props {
