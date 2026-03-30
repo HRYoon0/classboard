@@ -40,7 +40,6 @@ const MAIN_ITEMS: { type: string; icon: React.ReactNode; color: string; label: s
   { type: 'roulette',       icon: <IoColorWandOutline size={SZ} />,     color: '#ec4899', label: '마블 룰렛' },
   { type: 'image',          icon: <IoImageOutline size={SZ} />,         color: '#0ea5e9', label: '이미지' },
   { type: 'random-name',    icon: <IoPersonOutline size={SZ} />,        color: '#0ea5e9', label: '이름 뽑기' },
-  { type: 'noise-meter',    icon: <IoVolumeHighOutline size={SZ} />,    color: '#22c55e', label: '소음 측정' },
   { type: 'text',           icon: <IoTextOutline size={SZ} />,          color: '#8b5cf6', label: '텍스트' },
   { type: 'work-symbols',   icon: <IoListOutline size={SZ} />,          color: '#f59e0b', label: '활동 안내' },
   { type: 'traffic-light',  icon: <TrafficLightIcon />,                  color: '#64748b', label: '신호등' },
@@ -49,6 +48,7 @@ const MAIN_ITEMS: { type: string; icon: React.ReactNode; color: string; label: s
 ];
 
 const EXTRA_ITEMS: typeof MAIN_ITEMS = [
+  { type: 'noise-meter',    icon: <IoVolumeHighOutline size={SZ} />,    color: '#22c55e', label: '소음 측정' },
   { type: 'poll',           icon: <IoBarChartOutline size={SZ} />,      color: '#6366f1', label: '투표' },
   { type: 'stopwatch',      icon: <IoStopwatchOutline size={SZ} />,     color: '#14b8a6', label: '스톱워치' },
   { type: 'group-maker',    icon: <IoPeopleOutline size={SZ} />,        color: '#f97316', label: '모둠' },
