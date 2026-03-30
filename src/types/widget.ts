@@ -12,7 +12,8 @@ export type WidgetType =
   | 'qr-code'
   | 'dice'
   | 'work-symbols'
-  | 'calendar';
+  | 'calendar'
+  | 'image';
 
 export interface WidgetData {
   id: string;

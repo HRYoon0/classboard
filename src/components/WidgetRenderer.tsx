@@ -18,6 +18,7 @@ import QRCodeWidget from './widgets/QRCodeWidget';
 import DiceWidget from './widgets/DiceWidget';
 import WorkSymbolsWidget from './widgets/WorkSymbolsWidget';
 import CalendarWidget from './widgets/CalendarWidget';
+import ImageWidget from './widgets/ImageWidget';
 
 interface Props {
   widget: WidgetData;
@@ -66,6 +67,8 @@ function renderWidgetContent(
       return <WorkSymbolsWidget isSelected={isSelected} />;
     case 'calendar':
       return <CalendarWidget config={widget.config} onConfigChange={onConfigChange} isSelected={isSelected} />;
+    case 'image':
+      return <ImageWidget config={widget.config} onConfigChange={onConfigChange} />;
     default:
       return <div className="text-slate-400 text-sm">알 수 없는 위젯</div>;
   }

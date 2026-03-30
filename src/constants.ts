@@ -15,6 +15,7 @@ export const WIDGET_META: Record<WidgetType, WidgetMeta> = {
   dice: { type: 'dice', label: '주사위', icon: '🎲', defaultW: 420, defaultH: 400 },
   'work-symbols': { type: 'work-symbols', label: '활동 안내', icon: '📋', defaultW: 460, defaultH: 460 },
   calendar: { type: 'calendar', label: '달력', icon: '📅', defaultW: 400, defaultH: 420 },
+  image: { type: 'image', label: '이미지', icon: '🖼️', defaultW: 400, defaultH: 320 },
 };
 
 export const WIDGET_LIST = Object.values(WIDGET_META);
