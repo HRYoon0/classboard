@@ -181,6 +181,12 @@ function TextWidget({ config, onConfigChange }: Props) {
         onFocus={() => setIsEditing(true)}
         onBlur={() => { saveContent(); setIsEditing(false); }}
         onInput={saveContent}
+        onPaste={(e) => {
+          // 외부 서식 제거: 순수 텍스트만 붙여넣기
+          e.preventDefault();
+          const text = e.clipboardData.getData('text/plain');
+          document.execCommand('insertText', false, text);
+        }}
         data-placeholder="텍스트를 입력하세요..."
         style={{
           position: 'absolute',
