@@ -38,7 +38,7 @@ function TrafficLightIcon() {
 const MAIN_ITEMS: { type: string; icon: React.ReactNode; color: string; label: string }[] = [
   { type: 'calendar',       icon: <IoCalendarOutline size={SZ} />,      color: '#0ea5e9', label: '달력' },
   { type: 'roulette',       icon: <IoColorWandOutline size={SZ} />,     color: '#ec4899', label: '마블 룰렛' },
-  { type: 'image',          icon: <IoImageOutline size={SZ} />,         color: '#0ea5e9', label: '이미지' },
+  { type: 'image',          icon: <IoImageOutline size={SZ} />,         color: '#10b981', label: '이미지' },
   { type: 'random-name',    icon: <IoPersonOutline size={SZ} />,        color: '#0ea5e9', label: '이름 뽑기' },
   { type: 'text',           icon: <IoTextOutline size={SZ} />,          color: '#8b5cf6', label: '텍스트' },
   { type: 'work-symbols',   icon: <IoListOutline size={SZ} />,          color: '#f59e0b', label: '활동 안내' },
