@@ -69,8 +69,8 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
     <div className="fixed bottom-4 left-0 right-0 z-[9999] flex flex-col items-center pointer-events-none">
       {/* 더보기 패널 */}
       {showMore && (
-        <div className="pointer-events-auto mb-2 bg-white rounded-[20px] shadow-xl px-5 py-3">
-          <div className="flex items-center gap-3">
+        <div className="pointer-events-auto mb-2 bg-white rounded-[20px] shadow-xl" style={{ padding: '16px 28px' }}>
+          <div className="flex items-center" style={{ gap: 16 }}>
             {EXTRA_ITEMS.map((item) => (
               <BarButton
                 key={item.type}
