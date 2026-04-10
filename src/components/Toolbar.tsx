@@ -22,6 +22,7 @@ import {
   IoGameControllerOutline,
   IoCreateOutline,
   IoConstructOutline,
+  IoLinkOutline,
 } from 'react-icons/io5';
 import { HiOutlinePhotograph } from 'react-icons/hi';
 
@@ -102,6 +103,7 @@ const CATEGORIES: Category[] = [
     id: 'tools', icon: <IoConstructOutline size={SZ} />, color: '#64748b', label: '도구',
     items: [
       { type: 'qr-code', icon: <IoQrCodeOutline size={SZ} />, color: '#6366f1', label: 'QR 코드' },
+      { type: 'ssam-url', icon: <IoLinkOutline size={SZ} />, color: '#0ea5e9', label: '쌤.닷컴', external: 'https://쌤.닷컴' },
     ],
   },
 ];
