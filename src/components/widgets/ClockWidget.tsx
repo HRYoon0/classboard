@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useContainerScale } from '../../hooks/useContainerScale';
 
 type ClockStyle = 'classic' | 'minimal' | 'digital' | 'cat' | 'flower' | 'bear';
 
@@ -30,10 +31,15 @@ export default function ClockWidget({ config }: Props) {
   const digitalTime = `${is24h ? String(hours).padStart(2, '0') : String(displayHour)}:${String(minutes).padStart(2, '0')}`;
   const digitalTimeSec = `${digitalTime}:${String(seconds).padStart(2, '0')}`;
 
-  if (clockStyle === 'digital') return <DigitalClock time={digitalTimeSec} ampm={ampm} />;
-  if (clockStyle === 'cat') return <CatClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} />;
-  if (clockStyle === 'flower') return <FlowerClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} />;
-  if (clockStyle === 'bear') return <BearClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} />;
+  // 위젯 크기에 따라 자동 스케일 (기본 크기: 260x300 기준)
+  const { containerRef, scale: containerScale } = useContainerScale(220, 260);
+
+  const wrapStyle = { transform: `scale(${containerScale})`, transformOrigin: 'center center' };
+
+  if (clockStyle === 'digital') return <ScaleWrap ref={containerRef} scale={containerScale}><DigitalClock time={digitalTimeSec} ampm={ampm} /></ScaleWrap>;
+  if (clockStyle === 'cat') return <ScaleWrap ref={containerRef} scale={containerScale}><CatClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
+  if (clockStyle === 'flower') return <ScaleWrap ref={containerRef} scale={containerScale}><FlowerClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
+  if (clockStyle === 'bear') return <ScaleWrap ref={containerRef} scale={containerScale}><BearClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
 
   // classic / minimal 공통 아날로그 시계
   const size = 180;
@@ -42,7 +48,8 @@ export default function ClockWidget({ config }: Props) {
   const isMinimal = clockStyle === 'minimal';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '4px' }}>
+    <div ref={containerRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', transform: `scale(${containerScale})`, transformOrigin: 'center center' }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         {/* 테두리 */}
         <circle
@@ -128,8 +135,23 @@ export default function ClockWidget({ config }: Props) {
         {digitalTime}
       </div>
     </div>
+    </div>
   );
 }
+
+// ScaleWrap — 컨테이너 스케일 래퍼
+import { forwardRef, type ReactNode } from 'react';
+const ScaleWrap = forwardRef<HTMLDivElement, { scale: number; children: ReactNode }>(
+  function ScaleWrap({ scale, children }, ref) {
+    return (
+      <div ref={ref} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+        <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}>
+          {children}
+        </div>
+      </div>
+    );
+  }
+);
 
 // 디지털 시계 스타일
 function DigitalClock({ time, ampm }: { time: string; ampm: string }) {

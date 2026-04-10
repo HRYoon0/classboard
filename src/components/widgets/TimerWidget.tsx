@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { IoPlay, IoStop, IoRefresh } from 'react-icons/io5';
+import { useContainerScale } from '../../hooks/useContainerScale';
 
 const ALARM_SOUNDS: Record<string, string> = {
   alarm1: '/sounds/alarm1.mp3',
@@ -107,8 +108,12 @@ export default function TimerWidget({ config, onConfigChange }: Props) {
   const sec1 = seconds % 10;
   const digitW = 'w-[38px]';
 
+  // 위젯 크기에 따라 자동 스케일 (기본 크기: 420x200 기준)
+  const { containerRef, scale: containerScale } = useContainerScale(380, 160);
+
   return (
-    <div className="flex items-center justify-center h-full gap-6">
+    <div ref={containerRef} className="flex items-center justify-center h-full w-full">
+    <div className="flex items-center justify-center gap-6" style={{ transform: `scale(${containerScale})`, transformOrigin: 'center center' }}>
       {/* 원형 프로그래스 링 */}
       <div className="relative shrink-0">
         <svg width="140" height="140" viewBox="0 0 140 140">
@@ -175,6 +180,7 @@ export default function TimerWidget({ config, onConfigChange }: Props) {
           <div className={`${digitW} flex justify-center`}><AdjustBtn onClick={() => adjustTime('sec1', -1)} label="−" hidden={isRunning} /></div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
