@@ -35,7 +35,7 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
   const [showSetup, setShowSetup] = useState(false);
   const intervalRef = useRef<number | null>(null);
 
-  const { containerRef, scale: containerScale } = useContainerScale(340, 300);
+  const { containerRef, scale: containerScale } = useContainerScale(280, 420);
 
   const getPhaseSeconds = useCallback((p: Phase) => {
     if (p === 'focus') return focusMin * 60;
