@@ -285,11 +285,11 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
             background: 'rgba(255,255,255,0.92)',
             backdropFilter: 'blur(16px)',
             boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
-            borderRadius: 22,
-            padding: '10px 24px',
+            borderRadius: 26,
+            padding: '14px 32px',
             display: 'flex',
             alignItems: 'end',
-            gap: 2,
+            gap: 12,
             border: '1px solid rgba(255,255,255,0.6)',
           }}
         >
@@ -367,10 +367,10 @@ const DockCategoryBtn = forwardRef<HTMLButtonElement, {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        gap: 2,
-        width: 58,
-        height: 58,
-        borderRadius: 14,
+        gap: 4,
+        width: 72,
+        height: 72,
+        borderRadius: 16,
         border: 'none',
         background: isActive ? 'rgba(99,102,241,0.08)' : 'none',
         cursor: 'pointer',
@@ -383,7 +383,7 @@ const DockCategoryBtn = forwardRef<HTMLButtonElement, {
       <span style={{ color, transition: 'color 0.15s' }}>{icon}</span>
       <span style={{
         fontFamily: "'Do Hyeon', sans-serif",
-        fontSize: `${Math.max(10, 14 / scale)}px`,
+        fontSize: `${Math.max(11, 16 / scale)}px`,
         color: color,
         whiteSpace: 'nowrap',
         transition: 'color 0.15s',
