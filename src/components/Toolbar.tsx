@@ -149,17 +149,21 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
         <div className="mb-2 bg-white rounded-[20px] shadow-xl" style={{ padding: '16px 28px' }}>
           <div className="flex items-center" style={{ gap: 16 }}>
             {EXTRA_ITEMS.map((item) => (
-              <BarButton
+              <button
                 key={item.type}
-                icon={item.icon}
-                color={item.color}
-                label={item.label}
-                scale={1}
                 onClick={() => {
                   onAddWidget(item.type as WidgetType);
                   setShowMore(false);
                 }}
-              />
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: 2, width: 56, height: 56, borderRadius: 12, border: 'none', background: 'none',
+                  cursor: 'pointer', flexShrink: 0,
+                }}
+              >
+                <span style={{ color: item.color }}>{item.icon}</span>
+                <span style={{ fontFamily: "'Do Hyeon', sans-serif", fontSize: '15px', color: '#64748b', whiteSpace: 'nowrap' }}>{item.label}</span>
+              </button>
             ))}
           </div>
         </div>
