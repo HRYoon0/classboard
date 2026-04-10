@@ -212,11 +212,12 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             {Array.from({ length: 4 }).map((_, i) => (
               <span key={i} style={{
-                fontSize: 24,
                 opacity: i < (count % 4) ? 1 : 0.2,
                 transition: 'opacity 0.3s',
+                color: '#ef4444',
+                display: 'flex',
               }}>
-                🍅
+                <IoFlame size={22} />
               </span>
             ))}
             {count >= 4 && (
