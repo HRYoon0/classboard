@@ -286,7 +286,7 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
             backdropFilter: 'blur(16px)',
             boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
             borderRadius: 26,
-            padding: '14px 32px',
+            padding: '12px 32px',
             display: 'flex',
             alignItems: 'end',
             gap: 12,
