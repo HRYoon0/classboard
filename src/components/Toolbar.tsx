@@ -113,20 +113,18 @@ interface Props {
 
 export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
   const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
-  const [anchorX, setAnchorX] = useState(0);
-  const [anchorY, setAnchorY] = useState(0);
-  const [closing, setClosing] = useState(false);
+  const [anchorPos, setAnchorPos] = useState({ x: 0, y: 0 });
   const [visible, setVisible] = useState(true);
   const [mouseX, setMouseX] = useState<number | null>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<number>(0);
-  const isOverToolbar = useRef(false);
-  const categoryRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const isOverArea = useRef(false);
+  // 각 카테고리 버튼의 ref를 직접 관리
+  const catBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Auto-hide
   useEffect(() => {
     const handleGlobalMouse = (e: MouseEvent) => {
-      if (e.clientY > window.innerHeight - 20 || isOverToolbar.current) {
+      if (e.clientY > window.innerHeight - 20 || isOverArea.current) {
         setVisible(true);
         clearTimeout(hideTimerRef.current);
       }
@@ -135,23 +133,20 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
     return () => window.removeEventListener('mousemove', handleGlobalMouse);
   }, []);
 
-  const handleToolbarEnter = useCallback(() => {
-    isOverToolbar.current = true;
+  const handleAreaEnter = useCallback(() => {
+    isOverArea.current = true;
     setVisible(true);
     clearTimeout(hideTimerRef.current);
   }, []);
 
-  const handleToolbarLeave = useCallback(() => {
-    isOverToolbar.current = false;
+  const handleAreaLeave = useCallback(() => {
+    isOverArea.current = false;
     setMouseX(null);
-    if (openCategoryId) {
-      setClosing(true);
-      setTimeout(() => { setOpenCategoryId(null); setClosing(false); }, 200);
-    }
+    setOpenCategoryId(null);
     hideTimerRef.current = window.setTimeout(() => {
-      if (!isOverToolbar.current) setVisible(false);
+      if (!isOverArea.current) setVisible(false);
     }, 800);
-  }, [openCategoryId]);
+  }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     setMouseX(e.clientX);
@@ -174,75 +169,50 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
     } else {
       onAddWidget(item.type as WidgetType);
     }
-    setClosing(true);
-    setTimeout(() => { setOpenCategoryId(null); setClosing(false); }, 200);
+    setOpenCategoryId(null);
   };
 
-  const toggleCategory = (id: string) => {
-    if (openCategoryId === id) {
-      setClosing(true);
-      setTimeout(() => { setOpenCategoryId(null); setClosing(false); }, 200);
+  const toggleCategory = (catIndex: number, catId: string) => {
+    if (openCategoryId === catId) {
+      setOpenCategoryId(null);
     } else {
-      // 앵커 위치 계산
-      const el = categoryRefs.current[id];
+      const el = catBtnRefs.current[catIndex];
       if (el) {
         const rect = el.getBoundingClientRect();
-        setAnchorX(rect.left + rect.width / 2);
-        setAnchorY(rect.top);
+        setAnchorPos({ x: rect.left + rect.width / 2, y: rect.top });
       }
-      setClosing(false);
-      setOpenCategoryId(id);
+      setOpenCategoryId(catId);
     }
   };
 
   const openCategory = CATEGORIES.find((c) => c.id === openCategoryId);
 
   return (
-    <div
-      className="fixed left-0 right-0 z-[9999]"
-      style={{
-        bottom: 0,
-        paddingBottom: '12px',
-        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s',
-        transform: visible ? 'translateY(0)' : 'translateY(calc(100% - 4px))',
-        opacity: visible ? 1 : 0.3,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-      }}
-      onMouseEnter={handleToolbarEnter}
-      onMouseLeave={handleToolbarLeave}
-      onMouseMove={handleMouseMove}
-      ref={toolbarRef}
-    >
-      {/* 스택 아이템들 (fixed 위치로 앵커에서 펼쳐짐) */}
+    <>
+      {/* 스택 아이템들 — portal처럼 body 레벨에 fixed */}
       {openCategory && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, zIndex: 10000 }}>
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}
+          onClick={() => setOpenCategoryId(null)}
+        >
           {openCategory.items.map((item, i) => {
-            const total = openCategory.items.length;
-            const spacing = 60;
-            const yOffset = -(i + 1) * spacing;
-            // 약간의 곡선 (위로 갈수록 살짝 왼쪽으로)
-            const xOffset = (i - (total - 1) / 2) * 3;
+            const spacing = 62;
+            const yOffset = anchorPos.y - (i + 1) * spacing;
 
             return (
               <div
                 key={item.type}
                 style={{
-                  position: 'absolute',
-                  left: anchorX,
-                  top: anchorY,
-                  transform: closing
-                    ? `translate(-50%, 0) scale(0.5)`
-                    : `translate(-50%, ${yOffset}px) translateX(${xOffset}px) scale(1)`,
-                  opacity: closing ? 0 : 1,
-                  transition: `transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.04}s, opacity 0.2s ${i * 0.03}s`,
-                  zIndex: 10000 + i,
-                  pointerEvents: closing ? 'none' : 'auto',
+                  position: 'fixed',
+                  left: anchorPos.x,
+                  top: yOffset,
+                  transform: 'translateX(-50%)',
+                  animation: `stackIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.05}s both`,
+                  zIndex: 10001 + i,
                 }}
               >
                 <button
-                  onClick={() => handleItemClick(item)}
+                  onClick={(e) => { e.stopPropagation(); handleItemClick(item); }}
                   onMouseDown={(e) => e.stopPropagation()}
                   style={{
                     display: 'flex',
@@ -289,73 +259,97 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
         </div>
       )}
 
-      {/* 메인 카테고리 Dock */}
+      {/* Dock 영역 */}
       <div
         style={{
-          background: 'rgba(255,255,255,0.92)',
-          backdropFilter: 'blur(16px)',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
-          borderRadius: 22,
-          padding: '10px 24px',
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          paddingBottom: 12,
           display: 'flex',
-          alignItems: 'end',
-          gap: 2,
-          border: '1px solid rgba(255,255,255,0.6)',
+          flexDirection: 'column',
+          alignItems: 'center',
+          zIndex: 9999,
+          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s',
+          transform: visible ? 'translateY(0)' : 'translateY(calc(100% - 4px))',
+          opacity: visible ? 1 : 0.3,
         }}
+        onMouseEnter={handleAreaEnter}
+        onMouseLeave={handleAreaLeave}
+        onMouseMove={handleMouseMove}
       >
-        {CATEGORIES.map((cat) => (
-          <DockItem
-            key={cat.id}
-            ref={(el) => { categoryRefs.current[cat.id] = el; }}
-            icon={cat.icon}
-            color={openCategoryId === cat.id ? cat.color : '#64748b'}
-            label={cat.label}
-            isActive={openCategoryId === cat.id}
-            getScale={getScale}
-            onClick={() => toggleCategory(cat.id)}
-          />
-        ))}
+        <div
+          style={{
+            background: 'rgba(255,255,255,0.92)',
+            backdropFilter: 'blur(16px)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
+            borderRadius: 22,
+            padding: '10px 24px',
+            display: 'flex',
+            alignItems: 'end',
+            gap: 2,
+            border: '1px solid rgba(255,255,255,0.6)',
+          }}
+        >
+          {CATEGORIES.map((cat, idx) => (
+            <DockCategoryBtn
+              key={cat.id}
+              ref={(el) => { catBtnRefs.current[idx] = el; }}
+              icon={cat.icon}
+              color={openCategoryId === cat.id ? cat.color : '#64748b'}
+              label={cat.label}
+              isActive={openCategoryId === cat.id}
+              getScale={getScale}
+              onClick={() => toggleCategory(idx, cat.id)}
+            />
+          ))}
+        </div>
       </div>
 
       {/* 숨겨진 상태 감지 바 */}
       {!visible && (
         <div
-          style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 20 }}
+          style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 20, zIndex: 9998 }}
           onMouseEnter={() => { setVisible(true); clearTimeout(hideTimerRef.current); }}
         />
       )}
-    </div>
+
+      <style>{`
+        @keyframes stackIn {
+          0% { opacity: 0; transform: translateX(-50%) translateY(40px) scale(0.6); }
+          100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        }
+      `}</style>
+    </>
   );
 }
 
-// macOS Dock 아이템 (forwardRef)
+// Dock 카테고리 버튼
 import { forwardRef } from 'react';
 
-const DockItem = forwardRef<HTMLButtonElement, {
+const DockCategoryBtn = forwardRef<HTMLButtonElement, {
   icon: React.ReactNode;
   color: string;
   label: string;
   isActive: boolean;
   getScale: (el: HTMLElement | null) => number;
   onClick: () => void;
-}>(({ icon, color, label, isActive, getScale, onClick }, forwardedRef) => {
-  const innerRef = useRef<HTMLButtonElement>(null);
+}>(function DockCategoryBtn({ icon, color, label, isActive, getScale, onClick }, ref) {
+  const localRef = useRef<HTMLButtonElement>(null);
   const [scale, setScale] = useState(1);
 
-  // forwardRef와 innerRef 동기화
-  useEffect(() => {
-    if (typeof forwardedRef === 'function') {
-      forwardedRef(innerRef.current);
-    } else if (forwardedRef) {
-      forwardedRef.current = innerRef.current;
-    }
-  });
+  // ref 동기화
+  const setRefs = useCallback((el: HTMLButtonElement | null) => {
+    (localRef as React.MutableRefObject<HTMLButtonElement | null>).current = el;
+    if (typeof ref === 'function') ref(el);
+    else if (ref) (ref as React.MutableRefObject<HTMLButtonElement | null>).current = el;
+  }, [ref]);
 
   useEffect(() => {
     let raf: number;
     const update = () => {
-      const s = getScale(innerRef.current);
-      setScale(s);
+      setScale(getScale(localRef.current));
       raf = requestAnimationFrame(update);
     };
     raf = requestAnimationFrame(update);
@@ -364,7 +358,7 @@ const DockItem = forwardRef<HTMLButtonElement, {
 
   return (
     <button
-      ref={innerRef}
+      ref={setRefs}
       onClick={onClick}
       style={{
         position: 'relative',
