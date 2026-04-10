@@ -109,7 +109,7 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
   const phaseTotal = getPhaseSeconds(phase);
   const progress = phaseTotal > 0 ? totalSeconds / phaseTotal : 0;
 
-  const radius = 90;
+  const radius = 115;
   const circumference = 2 * Math.PI * radius;
   const strokeOffset = circumference * (1 - progress);
   const phaseColor = PHASE_COLORS[phase];
@@ -184,13 +184,13 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
 
           {/* 원형 프로그래스 */}
           <div style={{ position: 'relative' }}>
-            <svg width="200" height="200" viewBox="0 0 200 200">
-              <circle cx="100" cy="100" r={radius} fill="none" stroke="#e8e8ef" strokeWidth="8" />
+            <svg width="260" height="260" viewBox="0 0 260 260">
+              <circle cx="130" cy="130" r={radius} fill="none" stroke="#e8e8ef" strokeWidth="8" />
               <circle
-                cx="100" cy="100" r={radius} fill="none"
+                cx="130" cy="130" r={radius} fill="none"
                 stroke={phaseColor} strokeWidth="8" strokeLinecap="round"
                 strokeDasharray={circumference} strokeDashoffset={strokeOffset}
-                transform="rotate(-90 100 100)"
+                transform="rotate(-90 130 130)"
                 style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }}
               />
             </svg>
