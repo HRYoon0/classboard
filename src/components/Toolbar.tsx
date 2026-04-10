@@ -45,7 +45,7 @@ interface WidgetItem {
   icon: React.ReactNode;
   color: string;
   label: string;
-  external?: string; // 외부 링크
+  external?: string;
 }
 
 interface Category {
@@ -58,10 +58,7 @@ interface Category {
 
 const CATEGORIES: Category[] = [
   {
-    id: 'time',
-    icon: <IoAlarmOutline size={SZ} />,
-    color: '#6366f1',
-    label: '시간',
+    id: 'time', icon: <IoAlarmOutline size={SZ} />, color: '#6366f1', label: '시간',
     items: [
       { type: 'timer', icon: <IoTimerOutline size={SZ} />, color: '#6366f1', label: '타이머' },
       { type: 'stopwatch', icon: <IoStopwatchOutline size={SZ} />, color: '#14b8a6', label: '스톱워치' },
@@ -69,19 +66,13 @@ const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'schedule',
-    icon: <IoCalendarOutline size={SZ} />,
-    color: '#0ea5e9',
-    label: '일정',
+    id: 'schedule', icon: <IoCalendarOutline size={SZ} />, color: '#0ea5e9', label: '일정',
     items: [
       { type: 'calendar', icon: <IoCalendarOutline size={SZ} />, color: '#0ea5e9', label: '달력' },
     ],
   },
   {
-    id: 'classroom',
-    icon: <IoSchoolOutline size={SZ} />,
-    color: '#f59e0b',
-    label: '수업 관리',
+    id: 'classroom', icon: <IoSchoolOutline size={SZ} />, color: '#f59e0b', label: '수업 관리',
     items: [
       { type: 'traffic-light', icon: <TrafficLightIcon />, color: '#64748b', label: '신호등' },
       { type: 'work-symbols', icon: <IoListOutline size={SZ} />, color: '#f59e0b', label: '활동 안내' },
@@ -89,10 +80,7 @@ const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'activity',
-    icon: <IoGameControllerOutline size={SZ} />,
-    color: '#ec4899',
-    label: '뽑기/게임',
+    id: 'activity', icon: <IoGameControllerOutline size={SZ} />, color: '#ec4899', label: '뽑기/게임',
     items: [
       { type: 'random-name', icon: <IoPersonOutline size={SZ} />, color: '#0ea5e9', label: '이름 뽑기' },
       { type: 'group-maker', icon: <IoPeopleOutline size={SZ} />, color: '#f97316', label: '모둠' },
@@ -102,10 +90,7 @@ const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'content',
-    icon: <IoCreateOutline size={SZ} />,
-    color: '#8b5cf6',
-    label: '글/그림',
+    id: 'content', icon: <IoCreateOutline size={SZ} />, color: '#8b5cf6', label: '글/그림',
     items: [
       { type: 'text', icon: <IoTextOutline size={SZ} />, color: '#8b5cf6', label: '텍스트' },
       { type: 'image', icon: <IoImageOutline size={SZ} />, color: '#10b981', label: '이미지' },
@@ -113,10 +98,7 @@ const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'tools',
-    icon: <IoConstructOutline size={SZ} />,
-    color: '#64748b',
-    label: '도구',
+    id: 'tools', icon: <IoConstructOutline size={SZ} />, color: '#64748b', label: '도구',
     items: [
       { type: 'qr-code', icon: <IoQrCodeOutline size={SZ} />, color: '#6366f1', label: 'QR 코드' },
       { type: 'background', icon: <HiOutlinePhotograph size={SZ} />, color: '#6366f1', label: '배경' },
@@ -131,22 +113,26 @@ interface Props {
 
 export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
   const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
+  const [anchorX, setAnchorX] = useState(0);
+  const [anchorY, setAnchorY] = useState(0);
+  const [closing, setClosing] = useState(false);
   const [visible, setVisible] = useState(true);
   const [mouseX, setMouseX] = useState<number | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<number>(0);
   const isOverToolbar = useRef(false);
+  const categoryRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   // Auto-hide
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleGlobalMouse = (e: MouseEvent) => {
       if (e.clientY > window.innerHeight - 20 || isOverToolbar.current) {
         setVisible(true);
         clearTimeout(hideTimerRef.current);
       }
     };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousemove', handleGlobalMouse);
+    return () => window.removeEventListener('mousemove', handleGlobalMouse);
   }, []);
 
   const handleToolbarEnter = useCallback(() => {
@@ -158,11 +144,14 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
   const handleToolbarLeave = useCallback(() => {
     isOverToolbar.current = false;
     setMouseX(null);
-    setOpenCategoryId(null);
+    if (openCategoryId) {
+      setClosing(true);
+      setTimeout(() => { setOpenCategoryId(null); setClosing(false); }, 200);
+    }
     hideTimerRef.current = window.setTimeout(() => {
       if (!isOverToolbar.current) setVisible(false);
     }, 800);
-  }, []);
+  }, [openCategoryId]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     setMouseX(e.clientX);
@@ -185,84 +174,122 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
     } else {
       onAddWidget(item.type as WidgetType);
     }
-    setOpenCategoryId(null);
+    setClosing(true);
+    setTimeout(() => { setOpenCategoryId(null); setClosing(false); }, 200);
   };
 
   const toggleCategory = (id: string) => {
-    setOpenCategoryId((prev) => (prev === id ? null : id));
+    if (openCategoryId === id) {
+      setClosing(true);
+      setTimeout(() => { setOpenCategoryId(null); setClosing(false); }, 200);
+    } else {
+      // 앵커 위치 계산
+      const el = categoryRefs.current[id];
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        setAnchorX(rect.left + rect.width / 2);
+        setAnchorY(rect.top);
+      }
+      setClosing(false);
+      setOpenCategoryId(id);
+    }
   };
+
+  const openCategory = CATEGORIES.find((c) => c.id === openCategoryId);
 
   return (
     <div
-      className="fixed left-0 right-0 z-[9999] flex flex-col items-center"
+      className="fixed left-0 right-0 z-[9999]"
       style={{
         bottom: 0,
         paddingBottom: '12px',
         transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s',
         transform: visible ? 'translateY(0)' : 'translateY(calc(100% - 4px))',
         opacity: visible ? 1 : 0.3,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
       }}
       onMouseEnter={handleToolbarEnter}
       onMouseLeave={handleToolbarLeave}
       onMouseMove={handleMouseMove}
       ref={toolbarRef}
     >
-      {/* 열린 카테고리의 위젯 패널 */}
-      {openCategoryId && (
-        <div style={{
-          marginBottom: '8px',
-          background: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(16px)',
-          borderRadius: '20px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-          border: '1px solid rgba(255,255,255,0.6)',
-          padding: '14px 24px',
-          animation: 'popUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {CATEGORIES.find((c) => c.id === openCategoryId)?.items.map((item) => (
-              <button
+      {/* 스택 아이템들 (fixed 위치로 앵커에서 펼쳐짐) */}
+      {openCategory && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, zIndex: 10000 }}>
+          {openCategory.items.map((item, i) => {
+            const total = openCategory.items.length;
+            const spacing = 60;
+            const yOffset = -(i + 1) * spacing;
+            // 약간의 곡선 (위로 갈수록 살짝 왼쪽으로)
+            const xOffset = (i - (total - 1) / 2) * 3;
+
+            return (
+              <div
                 key={item.type}
-                onClick={() => handleItemClick(item)}
                 style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
-                  width: 60,
-                  height: 60,
-                  borderRadius: 14,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  transition: 'transform 0.15s, background 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(0,0,0,0.04)';
-                  e.currentTarget.style.transform = 'scale(1.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'none';
-                  e.currentTarget.style.transform = 'scale(1)';
+                  position: 'absolute',
+                  left: anchorX,
+                  top: anchorY,
+                  transform: closing
+                    ? `translate(-50%, 0) scale(0.5)`
+                    : `translate(-50%, ${yOffset}px) translateX(${xOffset}px) scale(1)`,
+                  opacity: closing ? 0 : 1,
+                  transition: `transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.04}s, opacity 0.2s ${i * 0.03}s`,
+                  zIndex: 10000 + i,
+                  pointerEvents: closing ? 'none' : 'auto',
                 }}
               >
-                <span style={{ color: item.color }}>{item.icon}</span>
-                <span style={{
-                  fontFamily: "'Do Hyeon', sans-serif",
-                  fontSize: '13px',
-                  color: '#475569',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {item.label}
-                </span>
-              </button>
-            ))}
-          </div>
+                <button
+                  onClick={() => handleItemClick(item)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 16px 8px 10px',
+                    background: 'rgba(255,255,255,0.95)',
+                    backdropFilter: 'blur(12px)',
+                    borderRadius: 14,
+                    border: '1px solid rgba(255,255,255,0.6)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'transform 0.12s, box-shadow 0.12s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.08)';
+                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
+                  }}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: `${item.color}15`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: item.color, flexShrink: 0,
+                  }}>
+                    {item.icon}
+                  </div>
+                  <span style={{
+                    fontFamily: "'Do Hyeon', sans-serif",
+                    fontSize: '15px',
+                    color: '#334155',
+                  }}>
+                    {item.label}
+                  </span>
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* 메인 카테고리 바 */}
+      {/* 메인 카테고리 Dock */}
       <div
         style={{
           background: 'rgba(255,255,255,0.92)',
@@ -279,6 +306,7 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
         {CATEGORIES.map((cat) => (
           <DockItem
             key={cat.id}
+            ref={(el) => { categoryRefs.current[cat.id] = el; }}
             icon={cat.icon}
             color={openCategoryId === cat.id ? cat.color : '#64748b'}
             label={cat.label}
@@ -289,48 +317,44 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
         ))}
       </div>
 
-      {/* 숨겨진 상태에서 하단 감지 바 */}
+      {/* 숨겨진 상태 감지 바 */}
       {!visible && (
         <div
           style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 20 }}
           onMouseEnter={() => { setVisible(true); clearTimeout(hideTimerRef.current); }}
         />
       )}
-
-      {/* 애니메이션 CSS */}
-      <style>{`
-        @keyframes popUp {
-          0% { opacity: 0; transform: translateY(12px) scale(0.95); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
     </div>
   );
 }
 
-// macOS Dock 스타일 아이템
-function DockItem({
-  icon,
-  color,
-  label,
-  isActive,
-  getScale,
-  onClick,
-}: {
+// macOS Dock 아이템 (forwardRef)
+import { forwardRef } from 'react';
+
+const DockItem = forwardRef<HTMLButtonElement, {
   icon: React.ReactNode;
   color: string;
   label: string;
   isActive: boolean;
   getScale: (el: HTMLElement | null) => number;
   onClick: () => void;
-}) {
-  const ref = useRef<HTMLButtonElement>(null);
+}>(({ icon, color, label, isActive, getScale, onClick }, forwardedRef) => {
+  const innerRef = useRef<HTMLButtonElement>(null);
   const [scale, setScale] = useState(1);
+
+  // forwardRef와 innerRef 동기화
+  useEffect(() => {
+    if (typeof forwardedRef === 'function') {
+      forwardedRef(innerRef.current);
+    } else if (forwardedRef) {
+      forwardedRef.current = innerRef.current;
+    }
+  });
 
   useEffect(() => {
     let raf: number;
     const update = () => {
-      const s = getScale(ref.current);
+      const s = getScale(innerRef.current);
       setScale(s);
       raf = requestAnimationFrame(update);
     };
@@ -340,9 +364,10 @@ function DockItem({
 
   return (
     <button
-      ref={ref}
+      ref={innerRef}
       onClick={onClick}
       style={{
+        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -370,17 +395,12 @@ function DockItem({
       }}>
         {label}
       </span>
-      {/* 활성 표시 점 */}
       {isActive && (
         <div style={{
-          width: 4,
-          height: 4,
-          borderRadius: '50%',
-          background: '#6366f1',
-          position: 'absolute',
-          bottom: 2,
+          position: 'absolute', bottom: 2, width: 4, height: 4,
+          borderRadius: '50%', background: '#6366f1',
         }} />
       )}
     </button>
   );
-}
+});
