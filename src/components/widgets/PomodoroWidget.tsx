@@ -125,7 +125,7 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
   // 설정 화면
   if (showSetup) {
     return (
-      <div ref={containerRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+      <div ref={containerRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', overflow: 'hidden' }}>
         <div style={{ transform: `scale(${containerScale})`, transformOrigin: 'center center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
             <p style={{ fontSize: 22, fontWeight: 700, color: '#1e293b' }}>뽀모도로 설정</p>
@@ -170,7 +170,7 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
   }
 
   return (
-    <div ref={containerRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+    <div ref={containerRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', overflow: 'hidden' }}>
       <div style={{ transform: `scale(${containerScale})`, transformOrigin: 'center center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           {/* 페이즈 표시 */}
