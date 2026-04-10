@@ -25,7 +25,6 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
   const focusMin = (config.focusMin as number) || 25;
   const breakMin = (config.breakMin as number) || 5;
   const longBreakMin = (config.longBreakMin as number) || 15;
-  const alarmSound = (config.alarmSound as string) || 'alarm1';
   const savedCount = (config.pomodoroCount as number) || 0;
 
   const [phase, setPhase] = useState<Phase>('focus');
@@ -43,34 +42,17 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
     return longBreakMin * 60;
   }, [focusMin, breakMin, longBreakMin]);
 
-  const playAlarm = useCallback(() => {
-    const file = alarmSound === 'beep' ? '' : `/sounds/${alarmSound}.mp3`;
-    if (file) {
-      const audio = new Audio(file);
-      audio.play().catch(() => {});
-    } else {
-      try {
-        const ctx = new AudioContext();
-        const playBeep = (time: number, freq: number) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.frequency.value = freq;
-          gain.gain.value = 0.3;
-          osc.start(time);
-          osc.stop(time + 0.2);
-        };
-        for (let i = 0; i < 6; i++) {
-          playBeep(ctx.currentTime + i * 0.35, i % 2 === 0 ? 880 : 660);
-        }
-      } catch { /* 무시 */ }
-    }
-  }, [alarmSound]);
+  // 페이즈별 다른 알림음
+  const playAlarm = useCallback((currentPhase: Phase) => {
+    // 집중 종료 → 부드러운 맑은 벨, 휴식 종료 → 활기찬 게임 차임
+    const soundFile = currentPhase === 'focus' ? '/sounds/alarm2.mp3' : '/sounds/alarm3.mp3';
+    const audio = new Audio(soundFile);
+    audio.play().catch(() => {});
+  }, []);
 
   // 다음 페이즈로 자동 전환
   const nextPhase = useCallback(() => {
-    playAlarm();
+    playAlarm(phase);
     if (phase === 'focus') {
       const newCount = count + 1;
       setCount(newCount);
