@@ -165,12 +165,14 @@ export default function WidgetWrapper({
           {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map((corner) => (
             <div
               key={corner}
-              className={`absolute w-3.5 h-3.5 bg-white border-2 border-indigo-400 rounded-full cursor-se-resize z-10 ${
-                corner === 'top-left' ? '-top-1.5 -left-1.5 cursor-nw-resize' :
-                corner === 'top-right' ? '-top-1.5 -right-1.5 cursor-ne-resize' :
-                corner === 'bottom-left' ? '-bottom-1.5 -left-1.5 cursor-sw-resize' :
-                '-bottom-1.5 -right-1.5 cursor-se-resize'
-              }`}
+              className="absolute w-3.5 h-3.5 bg-white border-2 border-indigo-400 rounded-full z-10"
+              style={{
+                cursor: corner === 'top-left' ? 'nw-resize' : corner === 'top-right' ? 'ne-resize' : corner === 'bottom-left' ? 'sw-resize' : 'se-resize',
+                top: corner.startsWith('top') ? '-6px' : undefined,
+                bottom: corner.startsWith('bottom') ? '-6px' : undefined,
+                left: corner.endsWith('left') ? '-6px' : undefined,
+                right: corner.endsWith('right') ? '-6px' : undefined,
+              }}
               onMouseDown={(e) => handleResize(e, corner)}
             />
           ))}
