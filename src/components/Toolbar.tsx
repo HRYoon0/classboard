@@ -366,7 +366,7 @@ const DockCategoryBtn = forwardRef<HTMLButtonElement, {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
         gap: 4,
         width: 72,
         height: 72,
