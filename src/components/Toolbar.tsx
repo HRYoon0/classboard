@@ -179,7 +179,7 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
       const el = catBtnRefs.current[catIndex];
       if (el) {
         const rect = el.getBoundingClientRect();
-        setAnchorPos({ x: rect.left + rect.width / 2, y: rect.top });
+        setAnchorPos({ x: rect.left, y: rect.top });
       }
       setOpenCategoryId(catId);
     }
@@ -207,7 +207,7 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
                   position: 'fixed',
                   left: anchorPos.x,
                   top: yOffset,
-                  transform: 'translateX(-50%)',
+                  transform: 'translateX(0)',
                   animation: `stackIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.05}s both`,
                   zIndex: 10001 + i,
                 }}
@@ -318,8 +318,8 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
 
       <style>{`
         @keyframes stackIn {
-          0% { opacity: 0; transform: translateX(-50%) translateY(40px) scale(0.6); }
-          100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+          0% { opacity: 0; transform: translateY(40px) scale(0.6); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
     </>
