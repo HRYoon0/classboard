@@ -61,6 +61,7 @@ const CATEGORIES: Category[] = [
     id: 'time', icon: <IoAlarmOutline size={SZ} />, color: '#6366f1', label: '시간',
     items: [
       { type: 'timer', icon: <IoTimerOutline size={SZ} />, color: '#6366f1', label: '타이머' },
+      { type: 'pomodoro', icon: <IoTimerOutline size={SZ} />, color: '#ef4444', label: '뽀모도로' },
       { type: 'stopwatch', icon: <IoStopwatchOutline size={SZ} />, color: '#14b8a6', label: '스톱워치' },
       { type: 'clock', icon: <IoTimeOutline size={SZ} />, color: '#0ea5e9', label: '시계' },
     ],
