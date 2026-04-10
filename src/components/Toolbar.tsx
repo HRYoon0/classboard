@@ -142,11 +142,11 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
   const handleAreaLeave = useCallback(() => {
     isOverArea.current = false;
     setMouseX(null);
-    setOpenCategoryId(null);
+    // 스택이 열려있으면 닫지 않음 (스택 배경 클릭으로만 닫힘)
     hideTimerRef.current = window.setTimeout(() => {
-      if (!isOverArea.current) setVisible(false);
+      if (!isOverArea.current && !openCategoryId) setVisible(false);
     }, 800);
-  }, []);
+  }, [openCategoryId]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     setMouseX(e.clientX);
@@ -193,7 +193,8 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
       {openCategory && (
         <div
           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}
-          onClick={() => setOpenCategoryId(null)}
+          onClick={() => { setOpenCategoryId(null); }}
+          onMouseEnter={() => { isOverArea.current = true; clearTimeout(hideTimerRef.current); }}
         >
           {openCategory.items.map((item, i) => {
             const spacing = 62;
