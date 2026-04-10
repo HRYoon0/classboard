@@ -114,7 +114,7 @@ interface Props {
 export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
   const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
   const [anchorPos, setAnchorPos] = useState({ x: 0, y: 0 });
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [mouseX, setMouseX] = useState<number | null>(null);
   const hideTimerRef = useRef<number>(0);
   const isOverArea = useRef(false);
@@ -298,7 +298,7 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
               key={cat.id}
               ref={(el) => { catBtnRefs.current[idx] = el; }}
               icon={cat.icon}
-              color={openCategoryId === cat.id ? cat.color : '#64748b'}
+              color={cat.color}
               label={cat.label}
               isActive={openCategoryId === cat.id}
               getScale={getScale}
@@ -384,7 +384,7 @@ const DockCategoryBtn = forwardRef<HTMLButtonElement, {
       <span style={{
         fontFamily: "'Do Hyeon', sans-serif",
         fontSize: `${Math.max(10, 14 / scale)}px`,
-        color: isActive ? '#6366f1' : '#64748b',
+        color: color,
         whiteSpace: 'nowrap',
         transition: 'color 0.15s',
       }}>
