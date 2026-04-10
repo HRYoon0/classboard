@@ -101,7 +101,6 @@ const CATEGORIES: Category[] = [
     id: 'tools', icon: <IoConstructOutline size={SZ} />, color: '#64748b', label: '도구',
     items: [
       { type: 'qr-code', icon: <IoQrCodeOutline size={SZ} />, color: '#6366f1', label: 'QR 코드' },
-      { type: 'background', icon: <HiOutlinePhotograph size={SZ} />, color: '#6366f1', label: '배경' },
     ],
   },
 ];
@@ -293,6 +292,19 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
             border: '1px solid rgba(255,255,255,0.6)',
           }}
         >
+          {/* 배경 버튼 — 카테고리 앞 독립 배치 */}
+          <DockCategoryBtn
+            icon={<HiOutlinePhotograph size={SZ} />}
+            color="#6366f1"
+            label="배경"
+            isActive={false}
+            getScale={getScale}
+            onClick={onOpenSettings}
+          />
+
+          {/* 구분선 */}
+          <div style={{ width: 1, height: 36, background: 'rgba(0,0,0,0.08)', margin: '0 4px', flexShrink: 0, alignSelf: 'center' }} />
+
           {CATEGORIES.map((cat, idx) => (
             <DockCategoryBtn
               key={cat.id}
