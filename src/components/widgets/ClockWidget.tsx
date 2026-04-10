@@ -34,8 +34,6 @@ export default function ClockWidget({ config }: Props) {
   // 위젯 크기에 따라 자동 스케일 (기본 크기: 260x300 기준)
   const { containerRef, scale: containerScale } = useContainerScale(220, 260);
 
-  const wrapStyle = { transform: `scale(${containerScale})`, transformOrigin: 'center center' };
-
   if (clockStyle === 'digital') return <ScaleWrap ref={containerRef} scale={containerScale}><DigitalClock time={digitalTimeSec} ampm={ampm} /></ScaleWrap>;
   if (clockStyle === 'cat') return <ScaleWrap ref={containerRef} scale={containerScale}><CatClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
   if (clockStyle === 'flower') return <ScaleWrap ref={containerRef} scale={containerScale}><FlowerClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
