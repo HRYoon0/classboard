@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { IoPlay, IoStop, IoRefresh } from 'react-icons/io5';
+import { IoPlay, IoStop, IoRefresh, IoFlame, IoCafe, IoSparkles } from 'react-icons/io5';
 import { useContainerScale } from '../../hooks/useContainerScale';
 
 interface Props {
@@ -178,7 +178,7 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
             fontSize: 22, fontWeight: 700, color: phaseColor,
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            <span>{phase === 'focus' ? '🍅' : phase === 'break' ? '☕' : '🎉'}</span>
+            {phase === 'focus' ? <IoFlame size={24} /> : phase === 'break' ? <IoCafe size={24} /> : <IoSparkles size={24} />}
             {PHASE_LABELS[phase]}
           </div>
 
