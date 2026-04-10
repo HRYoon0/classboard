@@ -128,14 +128,14 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
       <div ref={containerRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
         <div style={{ transform: `scale(${containerScale})`, transformOrigin: 'center center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
-            <p style={{ fontSize: 18, fontWeight: 700, color: '#1e293b' }}>뽀모도로 설정</p>
+            <p style={{ fontSize: 22, fontWeight: 700, color: '#1e293b' }}>뽀모도로 설정</p>
             {[
               { label: '집중 시간', key: 'focusMin', value: focusMin },
               { label: '휴식 시간', key: 'breakMin', value: breakMin },
               { label: '긴 휴식', key: 'longBreakMin', value: longBreakMin },
             ].map((item) => (
               <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 14, color: '#64748b', width: 80, textAlign: 'right' }}>{item.label}</span>
+                <span style={{ fontSize: 17, color: '#64748b', width: 90, textAlign: 'right' }}>{item.label}</span>
                 <input
                   type="number"
                   min={1}
@@ -151,7 +151,7 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
                     fontSize: 16, textAlign: 'center', outline: 'none',
                   }}
                 />
-                <span style={{ fontSize: 13, color: '#94a3b8' }}>분</span>
+                <span style={{ fontSize: 16, color: '#94a3b8' }}>분</span>
               </div>
             ))}
             <button
@@ -175,8 +175,8 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           {/* 페이즈 표시 */}
           <div style={{
-            fontSize: 16, fontWeight: 700, color: phaseColor,
-            display: 'flex', alignItems: 'center', gap: 6,
+            fontSize: 22, fontWeight: 700, color: phaseColor,
+            display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <span>{phase === 'focus' ? '🍅' : phase === 'break' ? '☕' : '🎉'}</span>
             {PHASE_LABELS[phase]}
@@ -200,7 +200,7 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             }}>
               <span style={{
-                fontSize: 48, fontWeight: 700, fontFamily: 'monospace',
+                fontSize: 56, fontWeight: 700, fontFamily: 'monospace',
                 color: '#1e293b', fontVariantNumeric: 'tabular-nums',
               }}>
                 {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
@@ -212,7 +212,7 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             {Array.from({ length: 4 }).map((_, i) => (
               <span key={i} style={{
-                fontSize: 20,
+                fontSize: 24,
                 opacity: i < (count % 4) ? 1 : 0.2,
                 transition: 'opacity 0.3s',
               }}>
@@ -220,7 +220,7 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
               </span>
             ))}
             {count >= 4 && (
-              <span style={{ fontSize: 14, color: '#64748b', marginLeft: 4 }}>×{Math.floor(count / 4)}</span>
+              <span style={{ fontSize: 18, color: '#64748b', marginLeft: 6, fontWeight: 600 }}>×{Math.floor(count / 4)}</span>
             )}
           </div>
 
