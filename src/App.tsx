@@ -93,7 +93,7 @@ function App() {
   const handleBgChange = (bg: string) => setBackground(bg);
 
   // 클라우드 데이터 로드 헬퍼
-  const loadCloudData = (data: Awaited<ReturnType<typeof loadFromDrive>>) => {
+  const loadCloudData = (data: Awaited<ReturnType<typeof loadFromDrive>>['data']) => {
     if (!data) return;
     skipAutoSaveRef.current = true;
     if (data.pages && data.version === 2) {
@@ -119,8 +119,8 @@ function App() {
         const params = new URLSearchParams(window.location.search);
         if (params.get('login') === 'success') {
           window.history.replaceState({}, '', '/');
-          const data = await loadFromDrive();
-          loadCloudData(data);
+          const loadRes = await loadFromDrive();
+          if (loadRes.data) loadCloudData(loadRes.data);
           showMsg(`${result.user.name}님 로그인 완료`);
         }
       }
@@ -150,12 +150,12 @@ function App() {
 
     clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = window.setTimeout(async () => {
-      const ok = await saveToDrive({
+      const res = await saveToDrive({
         pages: pagesRef.current,
         widgetConfigs: getAllWidgetConfigs(),
         version: 2,
       });
-      if (ok) showMsg('자동 저장 완료');
+      if (res.ok) showMsg('자동 저장 완료');
     }, 30000);
 
     return () => clearTimeout(autoSaveTimerRef.current);
@@ -165,22 +165,32 @@ function App() {
   const handleSave = async () => {
     if (!user) { showMsg('먼저 로그인해주세요'); return; }
     setSyncing(true);
-    const ok = await saveToDrive({ pages, widgetConfigs: getAllWidgetConfigs(), version: 2 });
+    const res = await saveToDrive({ pages, widgetConfigs: getAllWidgetConfigs(), version: 2 });
     setSyncing(false);
-    showMsg(ok ? '클라우드에 저장 완료' : '저장 실패');
+    if (res.ok) {
+      showMsg('클라우드에 저장 완료');
+    } else {
+      console.error('[saveToDrive]', res);
+      showMsg(`저장 실패: ${res.error || '알 수 없는 오류'}`);
+    }
   };
 
   // 수동 불러오기
   const handleLoad = async () => {
     if (!user) { showMsg('먼저 로그인해주세요'); return; }
     setSyncing(true);
-    const data = await loadFromDrive();
+    const loadRes = await loadFromDrive();
     setSyncing(false);
-    if (data) {
-      loadCloudData(data);
+    if (loadRes.data) {
+      loadCloudData(loadRes.data);
       showMsg('클라우드에서 불러오기 완료');
-    } else {
+    } else if (loadRes.error === 'not_found') {
       showMsg('저장된 데이터가 없습니다');
+    } else if (loadRes.error === 'unauthorized' || loadRes.error === 'refresh_failed') {
+      showMsg('로그인이 만료되었습니다. 다시 로그인해주세요');
+    } else {
+      console.error('[loadFromDrive]', loadRes);
+      showMsg(`불러오기 실패: ${loadRes.error || '알 수 없는 오류'}`);
     }
   };
 

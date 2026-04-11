@@ -36,7 +36,13 @@ export async function getMe(): Promise<{ loggedIn: boolean; user?: UserInfo }> {
 }
 
 // 구글 드라이브에 데이터 저장
-export async function saveToDrive(data: CloudData): Promise<boolean> {
+export interface SaveResult {
+  ok: boolean;
+  error?: string;
+  detail?: string;
+}
+
+export async function saveToDrive(data: CloudData): Promise<SaveResult> {
   try {
     const res = await fetch('/api/drive/save', {
       method: 'POST',
@@ -44,22 +50,31 @@ export async function saveToDrive(data: CloudData): Promise<boolean> {
       credentials: 'same-origin',
       body: JSON.stringify(data),
     });
-    if (res.status === 401) return false;
-    const result = await res.json();
-    return result.ok === true;
-  } catch {
-    return false;
+    const result = await res.json().catch(() => ({ ok: false, error: 'invalid_response' }));
+    if (result.ok === true) return { ok: true };
+    return { ok: false, error: result.error || `http_${res.status}`, detail: result.detail };
+  } catch (err) {
+    return { ok: false, error: 'network_error', detail: String(err) };
   }
 }
 
 // 구글 드라이브에서 데이터 로드
-export async function loadFromDrive(): Promise<CloudData | null> {
+export interface LoadResult {
+  data: CloudData | null;
+  error?: 'not_found' | 'unauthorized' | 'refresh_failed' | string;
+  detail?: string;
+}
+
+export async function loadFromDrive(): Promise<LoadResult> {
   try {
     const res = await fetch('/api/drive/load', { credentials: 'same-origin' });
-    if (res.status === 401) return null;
-    const result = await res.json();
-    return result.data || null;
-  } catch {
-    return null;
+    const result = await res.json().catch(() => ({ data: null, error: 'invalid_response' }));
+    return {
+      data: result.data || null,
+      error: result.error,
+      detail: result.detail,
+    };
+  } catch (err) {
+    return { data: null, error: 'network_error', detail: String(err) };
   }
 }
