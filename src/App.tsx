@@ -356,14 +356,33 @@ function App() {
         onRemove={removePage}
       />
 
-      <div className="absolute bottom-2 left-4 z-[9999]">
-        <span className="text-[10px] text-white/40">제작자: 윤희류(경남 황산초등학교) | 참고한 페이지: classroomscreen.com</span>
+      <div style={{
+        position: 'absolute', bottom: 6, left: 12, zIndex: 9999,
+      }}>
+        <span style={{
+          fontSize: 10, color: 'rgba(255,255,255,0.6)',
+          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+        }}>제작자: 윤희류(경남 황산초등학교) | 참고한 페이지: classroomscreen.com</span>
       </div>
 
-      <div className="absolute bottom-2 right-4 z-[9999] flex gap-3">
-        <span className="text-[10px] text-white/40">교실에서 사용하는 무료 위젯 화면 도구</span>
-        <a href="/privacy" target="_blank" className="text-[10px] text-white/40 hover:text-white/70 transition-colors">개인정보처리방침</a>
-        <a href="/terms" target="_blank" className="text-[10px] text-white/40 hover:text-white/70 transition-colors">서비스 약관</a>
+      <div style={{
+        position: 'absolute', bottom: 6, right: 12, zIndex: 9999,
+        display: 'flex', gap: 10,
+      }}>
+        <span style={{
+          fontSize: 10, color: 'rgba(255,255,255,0.6)',
+          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+        }}>교실에서 사용하는 무료 위젯 화면 도구</span>
+        <a href="/privacy" target="_blank" style={{
+          fontSize: 10, color: 'rgba(255,255,255,0.6)',
+          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+          textDecoration: 'none',
+        }}>개인정보처리방침</a>
+        <a href="/terms" target="_blank" style={{
+          fontSize: 10, color: 'rgba(255,255,255,0.6)',
+          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+          textDecoration: 'none',
+        }}>서비스 약관</a>
       </div>
     </div>
   );
