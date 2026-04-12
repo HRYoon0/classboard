@@ -146,28 +146,53 @@ function App() {
     showMsg('로그아웃 완료');
   };
 
-  // 자동 저장 (30초 디바운스)
+  // 자동 저장 (10초 디바운스 + 페이지 떠날 때 즉시 저장)
   const autoSaveTimerRef = useRef<number>(0);
   const skipAutoSaveRef = useRef(false);
   const pagesRef = useRef(pages);
   pagesRef.current = pages;
+  const dirtyRef = useRef(false);
+  const savingRef = useRef(false);
+
+  const doSave = useCallback(async () => {
+    if (!dirtyRef.current || savingRef.current) return;
+    dirtyRef.current = false;
+    savingRef.current = true;
+    const res = await saveToDrive({
+      pages: pagesRef.current,
+      widgetConfigs: getAllWidgetConfigs(),
+      version: 2,
+    });
+    savingRef.current = false;
+    if (res.ok) showMsg('자동 저장 완료');
+  }, []);
 
   useEffect(() => {
     if (!user) return;
     if (skipAutoSaveRef.current) { skipAutoSaveRef.current = false; return; }
 
+    dirtyRef.current = true;
     clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = window.setTimeout(async () => {
-      const res = await saveToDrive({
+    autoSaveTimerRef.current = window.setTimeout(doSave, 10000);
+
+    return () => clearTimeout(autoSaveTimerRef.current);
+  }, [pages, user, doSave]);
+
+  // 페이지 떠날 때 즉시 저장 (sendBeacon 사용)
+  useEffect(() => {
+    if (!user) return;
+    const handleBeforeUnload = () => {
+      if (!dirtyRef.current) return;
+      const payload = JSON.stringify({
         pages: pagesRef.current,
         widgetConfigs: getAllWidgetConfigs(),
         version: 2,
       });
-      if (res.ok) showMsg('자동 저장 완료');
-    }, 30000);
-
-    return () => clearTimeout(autoSaveTimerRef.current);
-  }, [pages, user]);
+      navigator.sendBeacon('/api/drive/save', new Blob([payload], { type: 'application/json' }));
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [user]);
 
   // 수동 저장
   const handleSave = async () => {
