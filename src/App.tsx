@@ -173,7 +173,7 @@ function App() {
 
     dirtyRef.current = true;
     clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = window.setTimeout(doSave, 10000);
+    autoSaveTimerRef.current = window.setTimeout(doSave, 60000);
 
     return () => clearTimeout(autoSaveTimerRef.current);
   }, [pages, user, doSave]);
