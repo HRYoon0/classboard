@@ -108,19 +108,27 @@ function App() {
     if (data.widgetConfigs) setAllWidgetConfigs(data.widgetConfigs);
   };
 
-  // 앱 시작 시 세션 확인 + 로그인 성공 후 데이터 로드
+  // 앱 시작 시 세션 확인 + 클라우드 데이터 자동 로드
   useEffect(() => {
     (async () => {
       const result = await getMe();
       if (result.loggedIn && result.user) {
         saveUser(result.user);
 
-        // ?login=success 쿼리가 있으면 클라우드에서 데이터 로드
         const params = new URLSearchParams(window.location.search);
-        if (params.get('login') === 'success') {
+        const isFirstLogin = params.get('login') === 'success';
+        if (isFirstLogin) {
           window.history.replaceState({}, '', '/');
-          const loadRes = await loadFromDrive();
-          if (loadRes.data) loadCloudData(loadRes.data);
+        }
+
+        // 로그인 상태면 항상 클라우드에서 최신 데이터 불러오기
+        const loadRes = await loadFromDrive();
+        if (loadRes.data) {
+          loadCloudData(loadRes.data);
+          if (isFirstLogin) {
+            showMsg(`${result.user.name}님 로그인 완료 (클라우드 동기화됨)`);
+          }
+        } else if (isFirstLogin) {
           showMsg(`${result.user.name}님 로그인 완료`);
         }
       }

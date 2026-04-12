@@ -73,6 +73,10 @@ async function getValidSession(
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // 캐싱 방지 — 항상 최신 Drive 데이터를 반환
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+
   try {
     let session = await getValidSession(req, res);
     if (!session?.accessToken) {

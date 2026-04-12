@@ -67,7 +67,10 @@ export interface LoadResult {
 
 export async function loadFromDrive(): Promise<LoadResult> {
   try {
-    const res = await fetch('/api/drive/load', { credentials: 'same-origin' });
+    const res = await fetch('/api/drive/load', {
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
     const result = await res.json().catch(() => ({ data: null, error: 'invalid_response' }));
     return {
       data: result.data || null,
