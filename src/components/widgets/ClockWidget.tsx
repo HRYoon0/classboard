@@ -31,8 +31,17 @@ export default function ClockWidget({ config }: Props) {
   const digitalTime = `${is24h ? String(hours).padStart(2, '0') : String(displayHour)}:${String(minutes).padStart(2, '0')}`;
   const digitalTimeSec = `${digitalTime}:${String(seconds).padStart(2, '0')}`;
 
-  // 위젯 크기에 따라 자동 스케일 (기본 크기: 260x300 기준)
-  const { containerRef, scale: containerScale } = useContainerScale(220, 260);
+  // 시계 스타일별 자연 콘텐츠 크기 (스케일 1일 때의 폭×높이)
+  const baseDims: Record<ClockStyle, [number, number]> = {
+    classic: [220, 260],
+    minimal: [220, 260],
+    digital: [320, 130],
+    cat: [220, 250],
+    flower: [220, 250],
+    bear: [220, 250],
+  };
+  const [baseW, baseH] = baseDims[clockStyle];
+  const { containerRef, scale: containerScale } = useContainerScale(baseW, baseH);
 
   if (clockStyle === 'digital') return <ScaleWrap ref={containerRef} scale={containerScale}><DigitalClock time={digitalTimeSec} ampm={ampm} /></ScaleWrap>;
   if (clockStyle === 'cat') return <ScaleWrap ref={containerRef} scale={containerScale}><CatClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
