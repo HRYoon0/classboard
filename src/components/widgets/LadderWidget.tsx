@@ -10,21 +10,17 @@ interface Props {
 const LANE_COLORS = [
   '#fbbf24', '#fb923c', '#f87171', '#ec4899',
   '#a78bfa', '#60a5fa', '#34d399', '#fde047',
+  '#22d3ee', '#84cc16', '#f97316', '#d946ef',
 ];
 
-// 가로대(rungs) 생성 — 무작위로 빽빽하게 깔고 결과가 좋으면 채택 (rejection sampling)
-// → 사다리 전체에 가로대 풍부 + 라인 spread 보장
+// 가로대(rungs) 생성 — Rejection sampling으로 빽빽 + 좋은 spread
 function generateRungs(cols: number, rows: number): boolean[][] {
-  if (cols < 2) {
-    return Array.from({ length: rows }, () => []);
-  }
+  if (cols < 2) return Array.from({ length: rows }, () => []);
 
-  // 한 번 무작위로 빽빽하게 깔기
   const buildRandom = (): boolean[][] => {
     const rungs: boolean[][] = [];
     for (let r = 0; r < rows; r++) {
       const row: boolean[] = new Array(cols - 1).fill(false);
-      // 시작 방향 무작위로 좌우 편향 방지
       const startFromLeft = Math.random() < 0.5;
       if (startFromLeft) {
         for (let c = 0; c < cols - 1; c++) {
@@ -42,23 +38,18 @@ function generateRungs(cols: number, rows: number): boolean[][] {
     return rungs;
   };
 
-  // 사다리 시뮬레이션해서 결과 permutation 도출
   const computePerm = (rungs: boolean[][]): number[] => {
     const columns = Array.from({ length: cols }, (_, i) => i);
     for (const row of rungs) {
       for (let g = 0; g < cols - 1; g++) {
-        if (row[g]) {
-          [columns[g], columns[g + 1]] = [columns[g + 1], columns[g]];
-        }
+        if (row[g]) [columns[g], columns[g + 1]] = [columns[g + 1], columns[g]];
       }
     }
-    // perm[lane] = lane이 도착한 col
     const perm = new Array<number>(cols);
     for (let c = 0; c < cols; c++) perm[columns[c]] = c;
     return perm;
   };
 
-  // 최대 30번까지 시도해 충분히 spread된 permutation 찾기
   let bestRungs: boolean[][] | null = null;
   let bestScore = -Infinity;
   for (let attempt = 0; attempt < 30; attempt++) {
@@ -66,32 +57,14 @@ function generateRungs(cols: number, rows: number): boolean[][] {
     const perm = computePerm(rungs);
     const fixedPoints = perm.filter((v, i) => v === i).length;
     const avgDispl = perm.reduce((s, v, i) => s + Math.abs(v - i), 0) / perm.length;
-    // 점수: 평균 변위 - 고정점 페널티
+    if (fixedPoints <= 1 && avgDispl >= cols / 3.5) return rungs;
     const score = avgDispl - fixedPoints * 2;
-    if (fixedPoints <= 1 && avgDispl >= cols / 3.5) {
-      return rungs;
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      bestRungs = rungs;
-    }
+    if (score > bestScore) { bestScore = score; bestRungs = rungs; }
   }
   return bestRungs ?? buildRandom();
 }
 
-// Fisher-Yates 셔플 — true=당첨, false=꽝
-function generateResults(total: number, blanks: number): boolean[] {
-  const arr: boolean[] = [];
-  for (let i = 0; i < total - blanks; i++) arr.push(true);
-  for (let i = 0; i < blanks; i++) arr.push(false);
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-// 시작 컬럼에서 사다리를 따라 내려간 끝 컬럼 추적
+// 시작 컬럼에서 사다리를 따라 내려간 경로 추적
 function computePath(startCol: number, rungs: boolean[][], cols: number): number[] {
   const path: number[] = [startCol];
   let col = startCol;
@@ -103,69 +76,87 @@ function computePath(startCol: number, rungs: boolean[][], cols: number): number
   return path;
 }
 
+// 결과 토스트에 표시할 메시지 포맷 (사용자가 자유롭게 정의 가능)
+// 예: "철수 → 청소" / "철수님은 청소!" / "👤 철수 🎯 청소"
+function formatResultMessage(topLabel: string, bottomLabel: string, idx: number): {
+  top: string;
+  bottom: string;
+} {
+  const safeTop = topLabel.trim() || `${idx + 1}번`;
+  const safeBottom = bottomLabel.trim() || '(빈 칸)';
+  return { top: safeTop, bottom: safeBottom };
+}
+
 type Phase = 'idle' | 'riding' | 'reveal';
 
 export default function LadderWidget({ config, onConfigChange }: Props) {
   const count = (config.count as number) || 0;
-  const blankCount = (config.blankCount as number) || 0;
-  const winCount = Math.max(0, count - blankCount); // UI에는 당첨 수로 표시
   const rungs: boolean[][] = (config.rungs as boolean[][]) || [];
-  const results: boolean[] = (config.results as boolean[]) || [];
+  const topLabels: string[] = (config.topLabels as string[]) || [];
+  const bottomLabels: string[] = (config.bottomLabels as string[]) || [];
   const completed: number[] = (config.completed as number[]) || [];
 
   const [showInput, setShowInput] = useState(!count);
   const [editCount, setEditCount] = useState(count || 6);
-  const [editWins, setEditWins] = useState(winCount || 3);
   const [riderCol, setRiderCol] = useState<number | null>(null);
   const [riderStep, setRiderStep] = useState(0);
   const [phase, setPhase] = useState<Phase>('idle');
   const [revealLane, setRevealLane] = useState<number | null>(null);
   const timersRef = useRef<number[]>([]);
+  const pointsRef = useRef<{ x: number; y: number }[]>([]);
 
-  // 레이아웃 계산 — 좌우 폭을 더 써서 사다리를 넓게
+  // 레이아웃 — 위/아래 박스가 있으니 LANE_W를 충분히 넓게
   const COLS = Math.max(2, Math.min(12, count));
   const LANE_W =
-    COLS <= 4 ? 140 :
+    COLS <= 4 ? 150 :
+    COLS <= 6 ? 130 :
     COLS <= 8 ? 110 :
-    COLS <= 10 ? 90 :
-    74;
-  const ROW_H = COLS <= 8 ? 32 : 26;
-  // 무작위 순열을 충분히 표현할 수 있도록 — 평균 swap = COLS*(COLS-1)/4
+    COLS <= 10 ? 92 :
+    78;
+  const ROW_H = COLS <= 8 ? 30 : 25;
   const ROWS = Math.max(14, Math.floor(COLS * 1.8));
-  const PADDING_X = 60;
-  const PADDING_TOP = 84;
-  const PADDING_BOTTOM = 92;
+  const PADDING_X = 50;
+  const PADDING_TOP = 24;
+  const PADDING_BOTTOM = 24;
   const ladderW = (COLS - 1) * LANE_W + PADDING_X * 2;
   const ladderH = ROWS * ROW_H + PADDING_TOP + PADDING_BOTTOM;
 
-  const innerW = showInput ? 380 : Math.max(440, ladderW + 20);
-  // 헤더(110: 제목+통계) + 사다리 + 안내 문구(28) + 버튼(50) + 마진(22) ≈ 110+ladderH+120
-  const innerH = showInput ? 380 : 110 + ladderH + 120;
+  const BOX_W = LANE_W - 14;
+  const BOX_H = 56;
+  const DOT_R = 22;
+  const DOT_GAP = 14; // 도트와 박스 사이 간격
+
+  // 헤더(96: 제목+설명) + 도트(54) + 위박스(BOX_H+10) + 사다리 + 아래박스(BOX_H+10) + 안내(36) + 버튼(54) + 마진
+  const innerW = showInput ? 420 : Math.max(520, ladderW + 40);
+  const innerH = showInput
+    ? 440
+    : 96 + (DOT_R * 2 + DOT_GAP) + (BOX_H + 10) + ladderH + (BOX_H + 10) + 36 + 54 + 24;
 
   const { containerRef, scale } = useContainerScale(innerW, innerH);
 
-  // 좌표 헬퍼
   const xOf = (c: number) => PADDING_X + c * LANE_W;
   const yOf = (r: number) => PADDING_TOP + r * ROW_H;
 
-  // count/blankCount 변경 시 사다리 재생성 (구버전 데이터 자동 마이그레이션 포함)
+  // count 변경 시 사다리/라벨 재생성
   useEffect(() => {
     if (count > 0) {
       const dimensionsOk =
         rungs.length === ROWS &&
         rungs.length > 0 &&
         rungs[0].length === Math.max(0, COLS - 1);
-      if (!dimensionsOk || results.length !== count) {
+      const labelsOk = topLabels.length === count && bottomLabels.length === count;
+      if (!dimensionsOk || !labelsOk) {
         onConfigChange({
           ...config,
           rungs: generateRungs(COLS, ROWS),
-          results: generateResults(count, blankCount),
+          topLabels: topLabels.length === count ? topLabels : Array.from({ length: count }, () => ''),
+          bottomLabels: bottomLabels.length === count ? bottomLabels : Array.from({ length: count }, () => ''),
           completed: [],
         });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count, blankCount]);
+  }, [count]);
 
   useEffect(() => {
     if (count) setShowInput(false);
@@ -173,64 +164,59 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
 
   useEffect(() => {
     if (count) setEditCount(count);
-    setEditWins(Math.max(0, count - blankCount));
-  }, [count, blankCount]);
+  }, [count]);
 
   useEffect(() => {
     return () => timersRef.current.forEach(clearTimeout);
   }, []);
 
+  // 위/아래 박스 텍스트 변경
+  const updateTopLabel = (idx: number, value: string) => {
+    const next = [...topLabels];
+    next[idx] = value;
+    onConfigChange({ ...config, topLabels: next });
+  };
+  const updateBottomLabel = (idx: number, value: string) => {
+    const next = [...bottomLabels];
+    next[idx] = value;
+    onConfigChange({ ...config, bottomLabels: next });
+  };
+
   // 사다리 타기 시작
   const ride = (startCol: number) => {
     if (phase !== 'idle' || completed.includes(startCol)) return;
-
     const colPath = computePath(startCol, rungs, COLS);
-
-    // 단계별 점 좌표 생성 (도트 → 사다리 → 이모지)
     const points: { x: number; y: number }[] = [];
-    // 시작: 상단 도트 위치
-    points.push({ x: xOf(colPath[0]), y: yOf(0) - 48 });
-    // 첫 행으로 내려옴
+    points.push({ x: xOf(colPath[0]), y: yOf(0) - DOT_GAP });
     points.push({ x: xOf(colPath[0]), y: yOf(0) });
     for (let r = 0; r < colPath.length - 1; r++) {
       if (colPath[r] !== colPath[r + 1]) {
-        // 가로대 끝까지 이동
         points.push({ x: xOf(colPath[r + 1]), y: yOf(r) });
       }
-      // 다음 행으로 내려감
       points.push({ x: xOf(colPath[r + 1]), y: yOf(r + 1) });
     }
-    // 끝: 하단 이모지 위치
     const endCol = colPath[colPath.length - 1];
-    points.push({ x: xOf(endCol), y: yOf(ROWS) + 40 });
+    points.push({ x: xOf(endCol), y: yOf(ROWS) + DOT_GAP });
     pointsRef.current = points;
     setRiderCol(startCol);
     setRiderStep(0);
     setRevealLane(null);
     setPhase('riding');
 
-    // 단계별 애니메이션
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
     points.forEach((_, i) => {
-      const delay = i * 200;
-      timersRef.current.push(
-        window.setTimeout(() => setRiderStep(i), delay)
-      );
+      timersRef.current.push(window.setTimeout(() => setRiderStep(i), i * 180));
     });
-    // 종료 후 리빌
-    const totalDuration = points.length * 200;
+    const totalDuration = points.length * 180;
     timersRef.current.push(
       window.setTimeout(() => {
-        const endCol = colPath[colPath.length - 1];
         setRevealLane(endCol);
         setPhase('reveal');
         onConfigChange({ ...config, completed: [...completed, startCol] });
       }, totalDuration + 200)
     );
   };
-
-  const pointsRef = useRef<{ x: number; y: number }[]>([]);
 
   const dismissReveal = () => {
     timersRef.current.forEach(clearTimeout);
@@ -246,34 +232,28 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
     onConfigChange({
       ...config,
       rungs: generateRungs(COLS, ROWS),
-      results: generateResults(count, blankCount),
       completed: [],
     });
   };
 
   const handleSubmit = () => {
     const validCount = Math.max(2, Math.min(12, editCount));
-    const validWins = Math.max(1, Math.min(validCount, editWins));
-    const validBlanks = validCount - validWins;
     const newRows = Math.max(14, Math.floor(validCount * 1.8));
     onConfigChange({
       ...config,
       count: validCount,
-      blankCount: validBlanks,
       rungs: generateRungs(validCount, newRows),
-      results: generateResults(validCount, validBlanks),
+      topLabels: Array.from({ length: validCount }, () => ''),
+      bottomLabels: Array.from({ length: validCount }, () => ''),
       completed: [],
     });
     setShowInput(false);
     dismissReveal();
   };
 
-  // ─── 입력 화면 ───
+  // ─── 입력 화면 (네이버 메인 스타일) ───
   if (showInput) {
-    const isValid =
-      editCount >= 2 && editCount <= 12 &&
-      editWins >= 1 && editWins <= editCount;
-    const previewBlanks = Math.max(0, editCount - editWins);
+    const isValid = editCount >= 2 && editCount <= 12;
     return (
       <div ref={containerRef} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -282,33 +262,55 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
         <div style={{
           transform: `scale(${scale})`,
           transformOrigin: 'center center',
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          gap: 14, width: 380,
+          width: 420,
+          height: 440,
+          padding: '34px 28px',
+          background: '#fffdf5',
+          border: '2px dashed #cbd5e1',
+          borderRadius: 18,
+          boxShadow: '0 12px 28px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(0,0,0,0.03)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18,
+          fontFamily: "'Do Hyeon', sans-serif",
+          position: 'relative',
         }}>
-          <p style={{
-            fontFamily: "'Do Hyeon', sans-serif",
-            fontSize: 26, color: '#0ea5e9', margin: 0,
-          }}>🪜 사다리 타기</p>
+          {/* 노트 상단 줄 장식 */}
+          <div style={{
+            position: 'absolute', top: 14, left: 24, right: 24, height: 1,
+            borderBottom: '1px dashed #e2e8f0',
+          }} />
 
-          {/* 참가자 수 */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>참가자 수 (2~12)</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <p style={{
+            fontSize: 50, color: '#1e293b', margin: '12px 0 0 0',
+            letterSpacing: '-1px',
+            textShadow: '3px 3px 0 rgba(14,165,233,0.18)',
+            fontFamily: "'Gaegu', sans-serif",
+            fontWeight: 700,
+          }}>
+            🪜 사다리게임!
+          </p>
+          <p style={{ fontSize: 18, color: '#94a3b8', margin: 0, fontFamily: "'Gaegu', sans-serif" }}>
+            인원수를 정하고 시작해보세요
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: 12 }}>
+            <p style={{ fontSize: 17, color: '#64748b', margin: 0, fontFamily: "'Gaegu', sans-serif" }}>참가 인원 (2~12명)</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <button
                 onClick={() => setEditCount((c) => Math.max(2, c - 1))}
                 onMouseDown={(e) => e.stopPropagation()}
                 style={countBtnStyle}
               >−</button>
-              <input
-                type="number"
-                min={2}
-                max={12}
-                value={editCount}
-                onChange={(e) => setEditCount(Number(e.target.value) || 0)}
-                onMouseDown={(e) => e.stopPropagation()}
-                onKeyDown={(e) => { if (e.key === 'Enter' && isValid) handleSubmit(); }}
-                style={countInputStyle}
-              />
+              <div style={{
+                width: 90, height: 90, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                border: '3px solid #fbbf24',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 48, fontWeight: 700, color: '#92400e',
+                boxShadow: '0 6px 16px rgba(251,191,36,0.35)',
+                fontFamily: "'Do Hyeon', sans-serif",
+              }}>
+                {editCount}
+              </div>
               <button
                 onClick={() => setEditCount((c) => Math.min(12, c + 1))}
                 onMouseDown={(e) => e.stopPropagation()}
@@ -317,72 +319,43 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
             </div>
           </div>
 
-          {/* 당첨 개수 */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-              당첨 개수 (1 ~ {editCount})
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button
-                onClick={() => setEditWins((w) => Math.max(1, w - 1))}
-                onMouseDown={(e) => e.stopPropagation()}
-                style={{ ...countBtnStyle, background: '#fef9c3', color: '#ca8a04' }}
-              >−</button>
-              <input
-                type="number"
-                min={1}
-                max={editCount}
-                value={editWins}
-                onChange={(e) => setEditWins(Number(e.target.value) || 0)}
-                onMouseDown={(e) => e.stopPropagation()}
-                onKeyDown={(e) => { if (e.key === 'Enter' && isValid) handleSubmit(); }}
-                style={{ ...countInputStyle, color: '#ca8a04' }}
-              />
-              <button
-                onClick={() => setEditWins((w) => Math.min(editCount, w + 1))}
-                onMouseDown={(e) => e.stopPropagation()}
-                style={{ ...countBtnStyle, background: '#fef9c3', color: '#ca8a04' }}
-              >+</button>
-            </div>
-          </div>
-
-          <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-            <b style={{ color: '#ca8a04' }}>당첨 {Math.max(0, Math.min(editCount, editWins))}개</b>
-            {' / '}
-            <b style={{ color: '#dc2626' }}>꽝 {previewBlanks}개</b>
-          </p>
-
           <button
             onClick={handleSubmit}
             disabled={!isValid}
+            onMouseDown={(e) => e.stopPropagation()}
             style={{
-              padding: '12px 38px',
-              background: !isValid
-                ? '#cbd5e1'
-                : 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+              padding: '14px 56px',
+              background: !isValid ? '#cbd5e1' : 'linear-gradient(135deg, #0ea5e9, #6366f1)',
               color: 'white',
               border: 'none',
-              borderRadius: 12,
-              fontSize: 18,
+              borderRadius: 14,
+              fontSize: 22,
               fontWeight: 700,
               fontFamily: "'Do Hyeon', sans-serif",
               cursor: !isValid ? 'default' : 'pointer',
-              boxShadow: isValid ? '0 6px 16px rgba(14,165,233,0.4)' : 'none',
+              boxShadow: isValid ? '0 8px 20px rgba(14,165,233,0.4)' : 'none',
+              marginTop: 12,
+              letterSpacing: '2px',
             }}
           >
-            시작하기
+            시작
           </button>
         </div>
       </div>
     );
   }
 
-  // ─── 게임 화면 ───
+  // ─── 게임 화면 (네이버 스타일: 위/아래 박스 + 사다리) ───
   const remainingCount = count - completed.length;
   const allDone = remainingCount === 0;
   const currentPoint = pointsRef.current[Math.min(riderStep, pointsRef.current.length - 1)];
   const riderColor = riderCol !== null ? LANE_COLORS[riderCol % LANE_COLORS.length] : '#0ea5e9';
   const traveledPoints = pointsRef.current.slice(0, riderStep + 1);
+
+  // SVG 위치 (도트 + 위박스 아래에 사다리)
+  const ladderTop = 96 + (DOT_R * 2) + DOT_GAP + (BOX_H + 10);
+  const topBoxY = 96 + (DOT_R * 2) + DOT_GAP;
+  const bottomBoxY = ladderTop + ladderH + 10;
 
   return (
     <div ref={containerRef} style={{
@@ -394,38 +367,126 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
         transformOrigin: 'center center',
         position: 'relative',
         width: innerW, height: innerH,
+        background: '#fffdf5',
+        border: '2px dashed #cbd5e1',
+        borderRadius: 18,
+        boxShadow: '0 12px 28px rgba(0,0,0,0.08)',
+        fontFamily: "'Do Hyeon', sans-serif",
       }}>
         {/* 제목 */}
         <div style={{
-          position: 'absolute', top: 4, left: 0, right: 0, textAlign: 'center',
-          fontSize: 42, fontWeight: 700, color: '#0ea5e9',
-          fontFamily: "'Do Hyeon', sans-serif",
+          position: 'absolute', top: 12, left: 0, right: 0, textAlign: 'center',
+          fontSize: 46, fontWeight: 700, color: '#1e293b',
+          letterSpacing: '-0.5px',
+          textShadow: '3px 3px 0 rgba(14,165,233,0.15)',
+          fontFamily: "'Gaegu', sans-serif",
         }}>
-          🪜 사다리 타기
+          🪜 사다리게임!
         </div>
 
         {/* 통계 */}
         <div style={{
-          position: 'absolute', top: 60, left: 0, right: 0, textAlign: 'center',
-          fontSize: 22, color: '#64748b',
-          fontFamily: "'Do Hyeon', sans-serif",
+          position: 'absolute', top: 68, left: 0, right: 0, textAlign: 'center',
+          fontSize: 18, color: '#64748b',
+          fontFamily: "'Gaegu', sans-serif",
         }}>
-          남은 사람: <b style={{ color: '#0ea5e9' }}>{remainingCount}</b> / {count}
-          {' · '}
-          <b style={{ color: '#ca8a04' }}>당첨 {winCount}</b>
-          {' · '}
-          <b style={{ color: '#dc2626' }}>꽝 {blankCount}</b>
+          남은 사람 <b style={{ color: '#0ea5e9' }}>{remainingCount}</b> / {count}
+        </div>
+
+        {/* 상단 클릭 도트 (사다리 타기 트리거) — SVG 컨테이너 위에 별도 레이어 */}
+        <div style={{
+          position: 'absolute',
+          top: 96,
+          left: '50%',
+          marginLeft: -ladderW / 2,
+          width: ladderW,
+          height: DOT_R * 2,
+        }}>
+          {Array.from({ length: COLS }).map((_, c) => {
+            const isCompleted = completed.includes(c);
+            const isCurrent = riderCol === c;
+            const color = LANE_COLORS[c % LANE_COLORS.length];
+            return (
+              <button
+                key={`top-dot-${c}`}
+                onClick={() => ride(c)}
+                onMouseDown={(e) => e.stopPropagation()}
+                disabled={isCompleted || phase !== 'idle'}
+                style={{
+                  position: 'absolute',
+                  left: xOf(c) - DOT_R,
+                  top: 0,
+                  width: DOT_R * 2,
+                  height: DOT_R * 2,
+                  borderRadius: '50%',
+                  background: isCompleted ? '#e2e8f0' : color,
+                  border: isCurrent ? `3px solid ${color}` : '2px solid rgba(0,0,0,0.1)',
+                  boxShadow: !isCompleted && phase === 'idle' ? '0 4px 10px rgba(0,0,0,0.2)' : 'none',
+                  cursor: !isCompleted && phase === 'idle' ? 'pointer' : 'default',
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: isCompleted ? '#94a3b8' : '#1e293b',
+                  fontFamily: "'Do Hyeon', sans-serif",
+                  transition: 'all 0.2s',
+                  padding: 0,
+                }}
+              >
+                {c + 1}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 위쪽 입력 박스 (참가자 이름) */}
+        <div style={{
+          position: 'absolute',
+          top: topBoxY,
+          left: '50%',
+          marginLeft: -ladderW / 2,
+          width: ladderW,
+          height: BOX_H,
+        }}>
+          {Array.from({ length: COLS }).map((_, c) => (
+            <input
+              key={`top-input-${c}`}
+              type="text"
+              value={topLabels[c] ?? ''}
+              onChange={(e) => updateTopLabel(c, e.target.value)}
+              onMouseDown={(e) => e.stopPropagation()}
+              placeholder={`참가자${c + 1}`}
+              style={{
+                position: 'absolute',
+                left: xOf(c) - BOX_W / 2,
+                top: 0,
+                width: BOX_W,
+                height: BOX_H,
+                padding: '4px 6px',
+                border: '2px solid #94a3b8',
+                borderRadius: 8,
+                background: '#fffef9',
+                fontFamily: "'Gaegu', sans-serif",
+                fontSize: 18,
+                fontWeight: 700,
+                color: '#1e293b',
+                textAlign: 'center',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = '#0ea5e9'; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = '#94a3b8'; }}
+            />
+          ))}
         </div>
 
         {/* 사다리 SVG */}
         <div style={{
           position: 'absolute',
-          top: 110,
+          top: ladderTop,
           left: '50%',
           marginLeft: -ladderW / 2,
         }}>
           <svg width={ladderW} height={ladderH} viewBox={`0 0 ${ladderW} ${ladderH}`}>
-            {/* 가로대 — 안개 영역(중앙 70%)에서는 숨김 */}
+            {/* 가로대 — 안개 영역 숨김 */}
             {rungs.map((row, r) => {
               const fogStart = Math.max(1, Math.floor(ROWS * 0.18));
               const fogEnd = Math.min(ROWS - 1, Math.ceil(ROWS * 0.82));
@@ -447,21 +508,21 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               );
             })}
 
-            {/* 세로 기둥 — 상단 도트와 하단 이모지까지 연결 */}
+            {/* 세로 기둥 */}
             {Array.from({ length: COLS }).map((_, c) => (
               <line
                 key={`col-${c}`}
                 x1={xOf(c)}
-                y1={yOf(0) - 48}
+                y1={yOf(0) - DOT_GAP}
                 x2={xOf(c)}
-                y2={yOf(ROWS) + 40}
+                y2={yOf(ROWS) + DOT_GAP}
                 stroke="#cbd5e1"
                 strokeWidth="4"
                 strokeLinecap="round"
               />
             ))}
 
-            {/* 안개 영역 — 중앙 가로대를 가려 미스터리 효과 */}
+            {/* 안개 영역 */}
             {(() => {
               const fogStart = Math.max(1, Math.floor(ROWS * 0.18));
               const fogEnd = Math.min(ROWS - 1, Math.ceil(ROWS * 0.82));
@@ -469,20 +530,18 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               const fh = (fogEnd - fogStart + 1) * ROW_H;
               return (
                 <>
-                  {/* 안개 본체 */}
                   <rect
                     x={PADDING_X * 0.4}
                     y={fy}
                     width={ladderW - PADDING_X * 0.8}
                     height={fh}
                     fill="#dbeafe"
-                    opacity="0.65"
+                    opacity="0.6"
                     rx="10"
                     style={{ animation: 'ladderFogPulse 3.2s ease-in-out infinite' }}
                   />
-                  {/* 안개 입자 (장식 점들) */}
-                  {Array.from({ length: 18 }).map((_, i) => {
-                    const fx = PADDING_X + (i * 37) % (ladderW - PADDING_X * 2);
+                  {Array.from({ length: 16 }).map((_, i) => {
+                    const fx = PADDING_X + (i * 41) % (ladderW - PADDING_X * 2);
                     const fyDot = fy + 8 + ((i * 23) % (fh - 16));
                     const fr = 1.5 + (i % 3);
                     return (
@@ -493,9 +552,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                         r={fr}
                         fill="white"
                         opacity={0.5}
-                        style={{
-                          animation: `ladderFogDrift ${4 + (i % 3)}s ease-in-out ${i * 0.2}s infinite`,
-                        }}
+                        style={{ animation: `ladderFogDrift ${4 + (i % 3)}s ease-in-out ${i * 0.2}s infinite` }}
                       />
                     );
                   })}
@@ -503,7 +560,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               );
             })()}
 
-            {/* 이동 경로 (지나간 부분 강조) — 안개 위에 그려져 항상 보임 */}
+            {/* 이동 경로 */}
             {phase !== 'idle' && traveledPoints.length > 1 && (
               <polyline
                 points={traveledPoints.map((p) => `${p.x},${p.y}`).join(' ')}
@@ -516,132 +573,110 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               />
             )}
 
-            {/* 상단 클릭 가능한 도트 */}
-            {Array.from({ length: COLS }).map((_, c) => {
-              const isCompleted = completed.includes(c);
-              const isCurrent = riderCol === c;
-              const color = LANE_COLORS[c % LANE_COLORS.length];
-              return (
-                <g key={`top-${c}`}>
-                  <circle
-                    cx={xOf(c)}
-                    cy={yOf(0) - 48}
-                    r="26"
-                    fill={isCompleted ? '#e2e8f0' : color}
-                    stroke={isCurrent ? color : 'rgba(0,0,0,0.1)'}
-                    strokeWidth={isCurrent ? '4' : '1.5'}
-                    style={{
-                      cursor: !isCompleted && phase === 'idle' ? 'pointer' : 'default',
-                      filter: !isCompleted && phase === 'idle'
-                        ? 'drop-shadow(0 4px 10px rgba(0,0,0,0.25))'
-                        : 'none',
-                      transition: 'all 0.2s',
-                    }}
-                    onClick={() => ride(c)}
-                  />
-                  <text
-                    x={xOf(c)}
-                    y={yOf(0) - 38}
-                    textAnchor="middle"
-                    fontSize="24"
-                    fontWeight="700"
-                    fontFamily="'Do Hyeon', sans-serif"
-                    fill={isCompleted ? '#94a3b8' : '#1e293b'}
-                    style={{ pointerEvents: 'none', userSelect: 'none' }}
-                  >
-                    {c + 1}
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* 하단 결과 이모지 */}
-            {results.map((isWin, c) => (
-              <g key={`bot-${c}`}>
-                <circle
-                  cx={xOf(c)}
-                  cy={yOf(ROWS) + 40}
-                  r="32"
-                  fill={isWin ? '#fef3c7' : '#475569'}
-                  stroke={isWin ? '#fbbf24' : '#334155'}
-                  strokeWidth="2"
-                  style={{
-                    filter: revealLane === c
-                      ? `drop-shadow(0 4px 16px ${isWin ? 'rgba(251,191,36,0.7)' : 'rgba(0,0,0,0.45)'})`
-                      : 'none',
-                    transition: 'filter 0.3s',
-                  }}
-                />
-                <text
-                  x={xOf(c)}
-                  y={yOf(ROWS) + 53}
-                  textAnchor="middle"
-                  fontSize="40"
-                  style={{ pointerEvents: 'none', userSelect: 'none' }}
-                >
-                  {isWin ? '😄' : '😭'}
-                </text>
-              </g>
-            ))}
-
-            {/* 라이더 (애니메이션 마커) */}
+            {/* 라이더 */}
             {phase !== 'idle' && currentPoint && (
               <circle
                 cx={currentPoint.x}
                 cy={currentPoint.y}
-                r="12"
+                r="11"
                 fill={riderColor}
                 stroke="white"
                 strokeWidth="3"
                 style={{
                   filter: `drop-shadow(0 4px 8px ${riderColor})`,
-                  transition: 'cx 0.18s linear, cy 0.18s linear',
+                  transition: 'cx 0.15s linear, cy 0.15s linear',
                 }}
               />
             )}
           </svg>
         </div>
 
-        {/* 결과 토스트 — 사다리 위에 떠 있는 모달 (가운데) */}
-        {phase === 'reveal' && riderCol !== null && revealLane !== null && (
-          <div
-            onClick={dismissReveal}
-            onMouseDown={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              padding: '24px 42px',
-              background: results[revealLane] ? '#fef3c7' : '#475569',
-              color: results[revealLane] ? '#92400e' : '#fff',
-              borderRadius: 18,
-              fontFamily: "'Do Hyeon', sans-serif",
-              fontSize: 40,
-              fontWeight: 700,
-              boxShadow: results[revealLane]
-                ? '0 16px 36px rgba(0,0,0,0.25), 0 0 32px rgba(251,191,36,0.55)'
-                : '0 16px 36px rgba(0,0,0,0.3)',
-              animation: 'ladderResultPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 18,
-              flexWrap: 'nowrap',
-              whiteSpace: 'nowrap',
-              zIndex: 10,
-              border: `3px solid ${results[revealLane] ? '#fbbf24' : '#1e293b'}`,
-            }}
-          >
-            <span style={{ whiteSpace: 'nowrap' }}>
-              {riderCol + 1}번 →
-            </span>
-            <span style={{ fontSize: 60, lineHeight: 1 }}>
-              {results[revealLane] ? '😄' : '😭'}
-            </span>
-            <span style={{ whiteSpace: 'nowrap' }}>
-              {results[revealLane] ? '당첨!' : '꽝'}
-            </span>
-          </div>
-        )}
+        {/* 아래쪽 입력 박스 (결과/당첨 내용) */}
+        <div style={{
+          position: 'absolute',
+          top: bottomBoxY,
+          left: '50%',
+          marginLeft: -ladderW / 2,
+          width: ladderW,
+          height: BOX_H,
+        }}>
+          {Array.from({ length: COLS }).map((_, c) => {
+            const isReveal = revealLane === c && phase === 'reveal';
+            return (
+              <input
+                key={`bot-input-${c}`}
+                type="text"
+                value={bottomLabels[c] ?? ''}
+                onChange={(e) => updateBottomLabel(c, e.target.value)}
+                onMouseDown={(e) => e.stopPropagation()}
+                placeholder={`결과${c + 1}`}
+                style={{
+                  position: 'absolute',
+                  left: xOf(c) - BOX_W / 2,
+                  top: 0,
+                  width: BOX_W,
+                  height: BOX_H,
+                  padding: '4px 6px',
+                  border: isReveal ? '3px solid #fbbf24' : '2px solid #94a3b8',
+                  borderRadius: 8,
+                  background: isReveal ? '#fef3c7' : '#fffef9',
+                  fontFamily: "'Gaegu', sans-serif",
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: isReveal ? '#92400e' : '#1e293b',
+                  textAlign: 'center',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  boxShadow: isReveal ? '0 0 20px rgba(251,191,36,0.6)' : 'none',
+                  transition: 'all 0.3s',
+                }}
+                onFocus={(e) => { if (!isReveal) e.currentTarget.style.borderColor = '#0ea5e9'; }}
+                onBlur={(e) => { if (!isReveal) e.currentTarget.style.borderColor = '#94a3b8'; }}
+              />
+            );
+          })}
+        </div>
+
+        {/* 결과 토스트 */}
+        {phase === 'reveal' && riderCol !== null && revealLane !== null && (() => {
+          const msg = formatResultMessage(
+            topLabels[riderCol] ?? '',
+            bottomLabels[revealLane] ?? '',
+            riderCol
+          );
+          return (
+            <div
+              onClick={dismissReveal}
+              onMouseDown={(e) => e.stopPropagation()}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                padding: '22px 36px',
+                background: '#fef3c7',
+                color: '#92400e',
+                borderRadius: 18,
+                fontSize: 32,
+                fontWeight: 700,
+                boxShadow: '0 16px 36px rgba(0,0,0,0.25), 0 0 32px rgba(251,191,36,0.55)',
+                animation: 'ladderResultPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 16,
+                flexWrap: 'nowrap',
+                whiteSpace: 'nowrap',
+                zIndex: 10,
+                border: '3px solid #fbbf24',
+                fontFamily: "'Gaegu', sans-serif",
+                maxWidth: '90%',
+              }}
+            >
+              <span style={{ whiteSpace: 'nowrap' }}>{msg.top}</span>
+              <span style={{ fontSize: 36, color: '#0ea5e9' }}>→</span>
+              <span style={{ whiteSpace: 'nowrap' }}>{msg.bottom}</span>
+            </div>
+          );
+        })()}
 
         {/* 모두 완료 메시지 */}
         {allDone && phase === 'idle' && (
@@ -654,11 +689,11 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
             background: '#0ea5e9',
             color: 'white',
             borderRadius: 18,
-            fontFamily: "'Do Hyeon', sans-serif",
-            fontSize: 32,
+            fontSize: 28,
             fontWeight: 700,
             boxShadow: '0 14px 32px rgba(14,165,233,0.4)',
             zIndex: 10,
+            fontFamily: "'Do Hyeon', sans-serif",
           }}>
             ✨ 모두 완료!
           </div>
@@ -668,11 +703,11 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
         {phase === 'idle' && !allDone && (
           <div style={{
             position: 'absolute',
-            bottom: 82, left: 0, right: 0, textAlign: 'center',
-            fontSize: 19, color: '#94a3b8',
-            fontFamily: "'Do Hyeon', sans-serif",
+            bottom: 70, left: 0, right: 0, textAlign: 'center',
+            fontSize: 17, color: '#94a3b8',
+            fontFamily: "'Gaegu', sans-serif",
           }}>
-            위쪽 색깔 도트를 클릭하면 사다리를 타고 내려갑니다
+            위/아래 칸을 채우고 색깔 도트를 눌러 시작해요
           </div>
         )}
 
@@ -687,7 +722,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               onMouseDown={(e) => e.stopPropagation()}
               style={smallBtnStyle}
             >
-              <IoRefresh size={16} /> 초기화 (사다리 다시 만들기)
+              <IoRefresh size={16} /> 사다리 다시 만들기
             </button>
           )}
           {phase === 'idle' && (
@@ -696,7 +731,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               onMouseDown={(e) => e.stopPropagation()}
               style={smallBtnStyle}
             >
-              <IoCreate size={16} /> 설정 변경
+              <IoCreate size={16} /> 인원 변경
             </button>
           )}
         </div>
@@ -722,20 +757,11 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
 }
 
 const countBtnStyle: React.CSSProperties = {
-  width: 50, height: 50, borderRadius: '50%',
+  width: 54, height: 54, borderRadius: '50%',
   border: 'none', background: '#f1f5f9', color: '#475569',
-  fontSize: 26, fontWeight: 700, cursor: 'pointer',
+  fontSize: 30, fontWeight: 700, cursor: 'pointer',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-};
-
-const countInputStyle: React.CSSProperties = {
-  width: 100, padding: '10px 6px',
-  border: '2px solid #e2e8f0',
-  borderRadius: 10,
-  fontSize: 36, fontWeight: 700, textAlign: 'center',
   fontFamily: "'Do Hyeon', sans-serif",
-  color: '#0ea5e9',
-  outline: 'none',
 };
 
 const smallBtnStyle: React.CSSProperties = {
@@ -747,4 +773,5 @@ const smallBtnStyle: React.CSSProperties = {
   fontSize: 14,
   cursor: 'pointer',
   display: 'flex', alignItems: 'center', gap: 6,
+  fontFamily: "'Do Hyeon', sans-serif",
 };
