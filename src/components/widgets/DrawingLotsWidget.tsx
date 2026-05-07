@@ -504,53 +504,81 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   );
 }
 
-// ─── 쪽지(종이 노트) SVG 컴포넌트 ───
-// 위에 작은 탭 + 끈 구멍 + 본체로 구성된 한국식 쪽지 모양 (46×70)
+// ─── 쪽지(풍선/구슬 모양) 컴포넌트 ───
+// 네이버 제비뽑기 스타일: 위에 매듭 + 둥근 본체 (46×70)
 function PaperNote({ color, isDrawn }: { color: string; isDrawn: boolean }) {
   if (isDrawn) {
     return (
-      <svg width="46" height="70" viewBox="0 0 46 70" style={{ display: 'block' }}>
-        <rect x="3" y="12" width="40" height="55" rx="5"
-          fill="#f8fafc"
-          stroke="#cbd5e1"
-          strokeWidth="1"
-          strokeDasharray="3 2"
-        />
-      </svg>
+      <div style={{ position: 'relative', width: 46, height: 70 }}>
+        <div style={{
+          position: 'absolute',
+          top: 14, left: 3,
+          width: 40, height: 54,
+          border: '1.5px dashed #cbd5e1',
+          borderRadius: '50% 50% 45% 45% / 35% 35% 50% 50%',
+          background: '#f8fafc',
+        }} />
+      </div>
     );
   }
 
   return (
-    <svg width="46" height="70" viewBox="0 0 46 70" style={{ display: 'block' }}>
-      {/* 본체 */}
-      <rect x="3" y="12" width="40" height="56" rx="5" fill={color} />
+    <div style={{ position: 'relative', width: 46, height: 70 }}>
+      {/* 매듭 (위쪽 작은 공) */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: '50%', marginLeft: -5,
+        width: 10, height: 10,
+        background: '#8b6f47',
+        borderRadius: '50%',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+      }}>
+        {/* 매듭 빛 반사 */}
+        <div style={{
+          position: 'absolute',
+          top: 2, left: 2,
+          width: 3, height: 3,
+          background: 'rgba(255,255,255,0.5)',
+          borderRadius: '50%',
+        }} />
+      </div>
 
-      {/* 본체 하단 그림자 */}
-      <rect x="3" y="60" width="40" height="8" rx="5" fill="rgba(0,0,0,0.08)" />
+      {/* 끈 (매듭과 본체 연결) */}
+      <div style={{
+        position: 'absolute',
+        top: 9, left: '50%', marginLeft: -1,
+        width: 2, height: 8,
+        background: '#8b6f47',
+      }} />
 
-      {/* 본체 상단 빛 반사 */}
-      <ellipse cx="12" cy="22" rx="7" ry="12" fill="white" opacity="0.32" />
-
-      {/* 상단 탭 */}
-      <rect x="17" y="2" width="12" height="12" rx="3" fill={color} />
-
-      {/* 탭 빛 반사 */}
-      <rect x="18" y="3" width="3.5" height="5" rx="1.5" fill="white" opacity="0.4" />
-
-      {/* 끈 구멍 */}
-      <circle cx="23" cy="8" r="2" fill="rgba(0,0,0,0.42)" />
-      <circle cx="23" cy="7.4" r="0.6" fill="rgba(255,255,255,0.4)" />
-
-      {/* "?" 표시 */}
-      <text x="23" y="45" textAnchor="middle"
-        fill="rgba(0,0,0,0.32)" fontSize="16" fontWeight="700"
-        fontFamily="'Do Hyeon', sans-serif">?</text>
-
-      {/* 본체 윤곽 */}
-      <rect x="3" y="12" width="40" height="56" rx="5"
-        fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="0.7" />
-      <rect x="17" y="2" width="12" height="12" rx="3"
-        fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="0.7" />
-    </svg>
+      {/* 본체 (풍선/구슬 모양) */}
+      <div style={{
+        position: 'absolute',
+        top: 15, left: 3,
+        width: 40, height: 53,
+        background: color,
+        borderRadius: '50% 50% 45% 45% / 35% 35% 50% 50%',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.18), inset 0 -4px 8px rgba(0,0,0,0.07)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 16,
+        fontWeight: 700,
+        color: 'rgba(0,0,0,0.32)',
+        fontFamily: "'Do Hyeon', sans-serif",
+        overflow: 'hidden',
+      }}>
+        {/* 빛 반사 */}
+        <div style={{
+          position: 'absolute',
+          top: 6, left: 6,
+          width: 9, height: 14,
+          background: 'rgba(255,255,255,0.4)',
+          borderRadius: '50%',
+          filter: 'blur(0.5px)',
+        }} />
+        ?
+      </div>
+    </div>
   );
 }
