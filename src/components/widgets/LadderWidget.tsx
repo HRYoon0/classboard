@@ -81,8 +81,8 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const ladderH = ROWS * ROW_H + PADDING_TOP + PADDING_BOTTOM;
 
   const innerW = showInput ? 380 : Math.max(440, ladderW + 20);
-  // 헤더(80) + 사다리 + 안내 문구(28) + 버튼(50) + 마진(22) ≈ 180 여유
-  const innerH = showInput ? 380 : 80 + ladderH + 110;
+  // 헤더(110: 제목+통계) + 사다리 + 안내 문구(28) + 버튼(50) + 마진(22) ≈ 110+ladderH+120
+  const innerH = showInput ? 380 : 110 + ladderH + 120;
 
   const { containerRef, scale } = useContainerScale(innerW, innerH);
 
@@ -352,7 +352,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
         {/* 사다리 SVG */}
         <div style={{
           position: 'absolute',
-          top: 70,
+          top: 110,
           left: '50%',
           marginLeft: -ladderW / 2,
         }}>
