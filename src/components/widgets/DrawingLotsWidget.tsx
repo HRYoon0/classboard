@@ -84,8 +84,8 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
       timersRef.current.push(window.setTimeout(fn, ms));
 
     t(400, () => setPhase('unfolding'));
-    // 펼침 애니메이션: 종이 확대 + X자 페이드 0.7초
-    t(1100, () => {
+    // 펼침 애니메이션: paperPop 0.4s + 플랩 0.4s 지연 + 0.7s 회전 ≈ 1.1초
+    t(1500, () => {
       setPhase('reveal');
       setConfettiKey((k) => k + 1);
       onConfigChange({ ...config, drawn: [...drawn, position] });
@@ -307,53 +307,94 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
           </div>
         </div>
 
-        {/* 펼쳐지는 종이 — 작게 접힌 상태에서 크게 펼쳐지며 X자가 흐려짐 */}
+        {/* 펼쳐지는 종이 — 봉투 열기 스타일 (윗 플랩이 3D로 위로 열림) */}
         {(phase === 'unfolding' || phase === 'reveal') && drawnPosition !== null && (
           <div style={{
             position: 'absolute',
             left: '50%', top: '50%',
             transform: 'translate(-50%, -50%)',
+            perspective: '1000px',
             pointerEvents: 'none',
             zIndex: 5,
           }}>
-            <svg viewBox="0 0 320 150" width="320" height="150" style={{ display: 'block' }}>
-              {/* 본체 - 작게 시작해서 크게 펼침 */}
-              <rect x="0" y="0" width="320" height="150" rx="12"
-                fill={drawnPaperColor}
-                style={{
-                  transformOrigin: '160px 75px',
-                  transformBox: 'fill-box',
-                  animation: 'lotsPaperGrow 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-                  filter: 'drop-shadow(0 14px 28px rgba(0,0,0,0.25))',
-                }}
-              />
-
-              {/* X자 접힘선 — 펼쳐지면서 흐려져 사라짐 */}
-              <g style={{
-                animation: 'lotsFoldsFade 0.5s 0.15s ease-out forwards',
-                transformOrigin: '160px 75px',
-                transformBox: 'fill-box',
+            <div style={{
+              width: 280,
+              height: 130,
+              position: 'relative',
+              transformStyle: 'preserve-3d',
+              animation: 'lotsPaperPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+            }}>
+              {/* 본체 (안쪽 내용 — 숫자가 드러남) */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: drawnPaperColor,
+                borderRadius: 12,
+                boxShadow: '0 14px 28px rgba(0,0,0,0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: "'Do Hyeon', sans-serif",
+                fontSize: 60,
+                fontWeight: 700,
+                color: '#1e293b',
               }}>
-                <line x1="40" y1="20" x2="280" y2="130"
-                  stroke="white" strokeWidth="3" strokeLinecap="round" />
-                <line x1="280" y1="20" x2="40" y2="130"
-                  stroke="white" strokeWidth="3" strokeLinecap="round" />
-              </g>
-
-              {/* 숫자 — 펼친 후 등장 */}
-              <text x="160" y="92" textAnchor="middle"
-                fontSize="56" fontWeight="700"
-                fill="#1e293b" fontFamily="'Do Hyeon', sans-serif"
-                style={{
+                <span style={{
                   opacity: phase === 'reveal' ? 1 : 0,
-                  transformOrigin: '160px 75px',
-                  transformBox: 'fill-box',
-                  animation: phase === 'reveal' ? 'lotsNumberShow 0.5s ease-out' : 'none',
-                }}
-              >
-                {drawnNumber}번
-              </text>
-            </svg>
+                  transform: phase === 'reveal' ? 'scale(1)' : 'scale(0.4)',
+                  transition: 'opacity 0.3s 0.6s, transform 0.4s 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                }}>
+                  {drawnNumber}번
+                </span>
+              </div>
+
+              {/* 윗 플랩 (앞으로 보이는 접힌 면, 위로 회전하며 열림) */}
+              <div style={{
+                position: 'absolute',
+                top: 0, left: 0,
+                width: '100%', height: '50%',
+                background: drawnPaperColor,
+                borderRadius: '12px 12px 0 0',
+                transformOrigin: 'top',
+                transform: 'rotateX(0deg)',
+                animation: 'lotsFlapTopOpen 0.7s 0.3s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards',
+                backfaceVisibility: 'hidden',
+                overflow: 'hidden',
+                boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
+              }}>
+                {/* X자 접힘선 — 위쪽 절반 부분 */}
+                <svg width="100%" height="260%" viewBox="0 0 280 130"
+                  style={{ position: 'absolute', top: 0, left: 0 }}>
+                  <line x1="20" y1="15" x2="260" y2="115"
+                    stroke="rgba(255,255,255,0.85)" strokeWidth="3" strokeLinecap="round" />
+                  <line x1="260" y1="15" x2="20" y2="115"
+                    stroke="rgba(255,255,255,0.85)" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+              </div>
+
+              {/* 아랫 플랩 (아래로 회전하며 열림) */}
+              <div style={{
+                position: 'absolute',
+                bottom: 0, left: 0,
+                width: '100%', height: '50%',
+                background: drawnPaperColor,
+                borderRadius: '0 0 12px 12px',
+                transformOrigin: 'bottom',
+                transform: 'rotateX(0deg)',
+                animation: 'lotsFlapBottomOpen 0.7s 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards',
+                backfaceVisibility: 'hidden',
+                overflow: 'hidden',
+                boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
+              }}>
+                {/* X자 접힘선 — 아래쪽 절반 부분 */}
+                <svg width="100%" height="260%" viewBox="0 0 280 130"
+                  style={{ position: 'absolute', bottom: 0, left: 0 }}>
+                  <line x1="20" y1="15" x2="260" y2="115"
+                    stroke="rgba(255,255,255,0.85)" strokeWidth="3" strokeLinecap="round" />
+                  <line x1="260" y1="15" x2="20" y2="115"
+                    stroke="rgba(255,255,255,0.85)" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+              </div>
+            </div>
           </div>
         )}
 
@@ -482,29 +523,27 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
       </div>
 
       <style>{`
-        @keyframes lotsPaperGrow {
+        @keyframes lotsPaperPop {
           0% {
-            transform: scale(0.18, 0.4);
-            opacity: 0.5;
+            transform: scale(0.4);
+            opacity: 0;
           }
-          50% {
-            transform: scale(1.06, 1.04);
+          70% {
+            transform: scale(1.05);
             opacity: 1;
           }
           100% {
-            transform: scale(1, 1);
+            transform: scale(1);
             opacity: 1;
           }
         }
-        @keyframes lotsFoldsFade {
-          0% { opacity: 1; transform: scale(0.3); }
-          50% { opacity: 0.8; transform: scale(1); }
-          100% { opacity: 0; transform: scale(1.2); }
+        @keyframes lotsFlapTopOpen {
+          0% { transform: rotateX(0deg); }
+          100% { transform: rotateX(-180deg); }
         }
-        @keyframes lotsNumberShow {
-          0% { opacity: 0; transform: scale(0.4); }
-          60% { transform: scale(1.15); }
-          100% { opacity: 1; transform: scale(1); }
+        @keyframes lotsFlapBottomOpen {
+          0% { transform: rotateX(0deg); }
+          100% { transform: rotateX(180deg); }
         }
         @keyframes lotsConfettiFly {
           0% {
