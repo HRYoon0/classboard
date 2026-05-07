@@ -20,6 +20,7 @@ import WorkSymbolsWidget from './widgets/WorkSymbolsWidget';
 import CalendarWidget from './widgets/CalendarWidget';
 import ImageWidget from './widgets/ImageWidget';
 import PomodoroWidget from './widgets/PomodoroWidget';
+import DrawingLotsWidget from './widgets/DrawingLotsWidget';
 
 interface Props {
   widget: WidgetData;
@@ -72,6 +73,8 @@ function renderWidgetContent(
       return <ImageWidget config={widget.config} onConfigChange={onConfigChange} />;
     case 'pomodoro':
       return <PomodoroWidget config={widget.config} onConfigChange={onConfigChange} />;
+    case 'lots':
+      return <DrawingLotsWidget config={widget.config} onConfigChange={onConfigChange} />;
     default:
       return <div className="text-slate-400 text-sm">알 수 없는 위젯</div>;
   }

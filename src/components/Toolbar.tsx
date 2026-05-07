@@ -23,6 +23,7 @@ import {
   IoCreateOutline,
   IoConstructOutline,
   IoLinkOutline,
+  IoTicketOutline,
 } from 'react-icons/io5';
 import { HiOutlinePhotograph } from 'react-icons/hi';
 
@@ -85,6 +86,7 @@ const CATEGORIES: Category[] = [
     id: 'activity', icon: <IoGameControllerOutline size={SZ} />, color: '#ec4899', label: '뽑기/게임',
     items: [
       { type: 'random-name', icon: <IoPersonOutline size={SZ} />, color: '#0ea5e9', label: '이름 뽑기' },
+      { type: 'lots', icon: <IoTicketOutline size={SZ} />, color: '#8b5cf6', label: '제비뽑기' },
       { type: 'group-maker', icon: <IoPeopleOutline size={SZ} />, color: '#f97316', label: '모둠' },
       { type: 'poll', icon: <IoBarChartOutline size={SZ} />, color: '#6366f1', label: '투표' },
       { type: 'dice', icon: <IoDiceOutline size={SZ} />, color: '#8b5cf6', label: '주사위' },

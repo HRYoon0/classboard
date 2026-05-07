@@ -14,7 +14,8 @@ export type WidgetType =
   | 'work-symbols'
   | 'calendar'
   | 'image'
-  | 'pomodoro';
+  | 'pomodoro'
+  | 'lots';
 
 export interface WidgetData {
   id: string;

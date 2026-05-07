@@ -17,6 +17,7 @@ export const WIDGET_META: Record<WidgetType, WidgetMeta> = {
   calendar: { type: 'calendar', label: '달력', icon: '📅', defaultW: 400, defaultH: 420 },
   image: { type: 'image', label: '이미지', icon: '🖼️', defaultW: 400, defaultH: 320 },
   pomodoro: { type: 'pomodoro', label: '뽀모도로', icon: '🍅', defaultW: 380, defaultH: 480 },
+  lots: { type: 'lots', label: '제비뽑기', icon: '🎫', defaultW: 480, defaultH: 540 },
 };
 
 export const WIDGET_LIST = Object.values(WIDGET_META);
