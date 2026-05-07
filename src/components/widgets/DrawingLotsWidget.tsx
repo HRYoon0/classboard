@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { IoTicket, IoRefresh, IoCreate, IoSparkles } from 'react-icons/io5';
+import { IoRefresh, IoCreate, IoSparkles } from 'react-icons/io5';
 import { useContainerScale } from '../../hooks/useContainerScale';
 
 interface Props {
@@ -7,7 +7,7 @@ interface Props {
   onConfigChange: (config: Record<string, unknown>) => void;
 }
 
-type Phase = 'idle' | 'shaking' | 'rising' | 'unfolding' | 'reveal';
+type Phase = 'idle' | 'lifting' | 'unfolding' | 'reveal';
 
 const PAPER_COLORS = [
   '#fde68a', '#fecaca', '#bbf7d0', '#bfdbfe',
@@ -15,27 +15,42 @@ const PAPER_COLORS = [
   '#d9f99d', '#fef3c7', '#ddd6fe', '#fed7e2',
 ];
 
+// Fisher-Yates 셔플
+function shuffle(n: number): number[] {
+  const arr = Array.from({ length: n }, (_, i) => i);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   const count = (config.count as number) || 0;
   const drawn: number[] = (config.drawn as number[]) || [];
+  const assignment: number[] = (config.assignment as number[]) || [];
+
   const [showInput, setShowInput] = useState(!count);
   const [editCount, setEditCount] = useState(count || 25);
-  const [drawnIdx, setDrawnIdx] = useState<number | null>(null);
+  const [drawnPosition, setDrawnPosition] = useState<number | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [confettiKey, setConfettiKey] = useState(0);
   const timersRef = useRef<number[]>([]);
-  const { containerRef, scale } = useContainerScale(420, 460);
+  const { containerRef, scale } = useContainerScale(440, 480);
 
-  // 이름 배열을 인원수에서 동적 생성 ("1번", "2번", ...)
-  const names = Array.from({ length: count }, (_, i) => `${i + 1}번`);
-  const remaining = names.map((_, i) => i).filter((i) => !drawn.includes(i));
+  // count가 설정되어 있는데 assignment가 없거나 길이가 안 맞으면 재셔플
+  useEffect(() => {
+    if (count > 0 && assignment.length !== count) {
+      onConfigChange({ ...config, assignment: shuffle(count), drawn: [] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count]);
 
   // 클라우드 로드로 인원수가 설정되면 결과 화면으로 자동 전환
   useEffect(() => {
     if (count) setShowInput(false);
   }, [count]);
 
-  // 인원수가 외부에서 바뀌면 편집값 동기화
   useEffect(() => {
     if (count) setEditCount(count);
   }, [count]);
@@ -44,55 +59,53 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
     return () => timersRef.current.forEach(clearTimeout);
   }, []);
 
-  const handleDraw = () => {
-    if (remaining.length === 0 || phase !== 'idle') return;
+  const handlePaperClick = (position: number) => {
+    if (drawn.includes(position) || phase !== 'idle') return;
 
-    const choice = remaining[Math.floor(Math.random() * remaining.length)];
+    setDrawnPosition(position);
+    setPhase('lifting');
 
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
-
     const t = (ms: number, fn: () => void) =>
       timersRef.current.push(window.setTimeout(fn, ms));
 
-    setPhase('shaking');
-
-    t(1100, () => {
-      setDrawnIdx(choice);
-      setPhase('rising');
-    });
-    t(1900, () => setPhase('unfolding'));
-    t(2500, () => {
+    t(400, () => setPhase('unfolding'));
+    t(900, () => {
       setPhase('reveal');
       setConfettiKey((k) => k + 1);
-      onConfigChange({ ...config, drawn: [...drawn, choice] });
+      onConfigChange({ ...config, drawn: [...drawn, position] });
     });
   };
 
   const handleNext = () => {
-    setDrawnIdx(null);
+    setDrawnPosition(null);
     setPhase('idle');
   };
 
   const handleResetAll = () => {
-    setDrawnIdx(null);
+    setDrawnPosition(null);
     setPhase('idle');
-    onConfigChange({ ...config, drawn: [] });
+    onConfigChange({ ...config, drawn: [], assignment: shuffle(count) });
   };
 
   const handleSubmit = () => {
     const validCount = Math.max(2, Math.min(99, editCount));
-    onConfigChange({ ...config, count: validCount, drawn: [] });
+    onConfigChange({ ...config, count: validCount, drawn: [], assignment: shuffle(validCount) });
     setShowInput(false);
-    setDrawnIdx(null);
+    setDrawnPosition(null);
     setPhase('idle');
   };
 
-  const totalCount = names.length;
-  const remainingCount = remaining.length;
+  const remainingCount = count - drawn.length;
+  const drawnNumber =
+    drawnPosition !== null && assignment[drawnPosition] !== undefined
+      ? assignment[drawnPosition] + 1
+      : 0;
   const drawnPaperColor =
-    drawnIdx !== null ? PAPER_COLORS[drawnIdx % PAPER_COLORS.length] : '#fde68a';
-  const drawnName = drawnIdx !== null ? names[drawnIdx] : '';
+    drawnPosition !== null
+      ? PAPER_COLORS[drawnPosition % PAPER_COLORS.length]
+      : '#fde68a';
 
   // ─── 입력 화면 ───
   if (showInput) {
@@ -116,25 +129,17 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
             인원수를 입력하세요 (2 ~ 99)
           </p>
 
-          {/* 인원수 조절 (- / 숫자 / +) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <button
               onClick={() => setEditCount((c) => Math.max(2, c - 1))}
               onMouseDown={(e) => e.stopPropagation()}
               style={{
                 width: 56, height: 56, borderRadius: '50%',
-                border: 'none',
-                background: '#f1f5f9',
-                color: '#475569',
+                border: 'none', background: '#f1f5f9', color: '#475569',
                 fontSize: 28, fontWeight: 700, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'background 0.15s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
-            >
-              −
-            </button>
+            >−</button>
             <input
               type="number"
               min={2}
@@ -158,25 +163,18 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
               onMouseDown={(e) => e.stopPropagation()}
               style={{
                 width: 56, height: 56, borderRadius: '50%',
-                border: 'none',
-                background: '#f1f5f9',
-                color: '#475569',
+                border: 'none', background: '#f1f5f9', color: '#475569',
                 fontSize: 28, fontWeight: 700, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'background 0.15s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
-            >
-              +
-            </button>
+            >+</button>
           </div>
 
           <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
             <b style={{ color: '#7c3aed', fontFamily: "'Do Hyeon', sans-serif" }}>
               1번 ~ {Math.max(2, Math.min(99, editCount))}번
             </b>{' '}
-            중에서 무작위로 뽑아요
+            중에서 직접 뽑아요
           </p>
 
           <button
@@ -205,6 +203,10 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   }
 
   // ─── 추첨 화면 ───
+  // 종이 그리드 레이아웃 계산
+  const cols = count <= 16 ? Math.min(8, count) : count <= 36 ? 6 : 7;
+  const allDrawn = remainingCount === 0;
+
   return (
     <div ref={containerRef} style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -214,11 +216,11 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
         transform: `scale(${scale})`,
         transformOrigin: 'center center',
         position: 'relative',
-        width: 420, height: 460,
+        width: 440, height: 480,
       }}>
         {/* 제목 */}
         <div style={{
-          position: 'absolute', top: 8, left: 0, right: 0, textAlign: 'center',
+          position: 'absolute', top: 6, left: 0, right: 0, textAlign: 'center',
           fontSize: 22, fontWeight: 700, color: '#7c3aed',
           fontFamily: "'Do Hyeon', sans-serif",
         }}>
@@ -227,93 +229,103 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
 
         {/* 남은 인원 */}
         <div style={{
-          position: 'absolute', top: 42, left: 0, right: 0, textAlign: 'center',
+          position: 'absolute', top: 38, left: 0, right: 0, textAlign: 'center',
           fontSize: 13, color: '#64748b',
         }}>
-          남은 인원: <b style={{ color: '#7c3aed' }}>{remainingCount}</b> / {totalCount}
+          남은 종이: <b style={{ color: '#7c3aed' }}>{remainingCount}</b> / {count}
         </div>
 
-        {/* 제비뽑기 통 (idle/shaking) */}
-        {(phase === 'idle' || phase === 'shaking') && (
+        {/* 종이 그리드 */}
+        <div style={{
+          position: 'absolute',
+          top: 70, left: 0, right: 0,
+          display: 'flex', justifyContent: 'center',
+        }}>
           <div style={{
-            position: 'absolute',
-            top: 80, left: '50%',
-            width: 280, height: 200,
-            marginLeft: -140,
-            background: 'linear-gradient(to bottom, #f1f5f9 0%, #cbd5e1 100%)',
-            border: '5px solid #94a3b8',
-            borderRadius: '14px 14px 30px 30px',
-            boxShadow: '0 12px 28px rgba(0,0,0,0.18), inset 0 -8px 16px rgba(0,0,0,0.1)',
-            overflow: 'hidden',
-            animation: phase === 'shaking' ? 'lotsJarShake 0.12s linear infinite' : 'none',
+            display: 'grid',
+            gridTemplateColumns: `repeat(${cols}, 48px)`,
+            gap: 8,
+            maxWidth: 420,
           }}>
-            {/* 통 입구 그림자 */}
-            <div style={{
-              position: 'absolute', top: 0, left: 0, right: 0,
-              height: 22,
-              background: 'linear-gradient(to bottom, rgba(0,0,0,0.25), transparent)',
-              pointerEvents: 'none',
-            }} />
+            {assignment.map((_, position) => {
+              const isDrawn = drawn.includes(position);
+              const isLifting = drawnPosition === position && phase === 'lifting';
+              const isHidden = drawnPosition === position && (phase === 'unfolding' || phase === 'reveal');
+              const colorIdx = position % PAPER_COLORS.length;
+              const color = PAPER_COLORS[colorIdx];
+              const tilt = ((position * 13) % 9) - 4;
 
-            {/* 통 안의 종이들 */}
-            {names.map((_, i) => {
-              if (drawn.includes(i)) return null;
-              const col = i % 6;
-              const row = Math.floor(i / 6) % 4;
-              const rotate = ((i * 17) % 30) - 15;
               return (
-                <div key={i} style={{
-                  position: 'absolute',
-                  left: 18 + col * 42,
-                  top: 36 + row * 38,
-                  width: 36, height: 30,
-                  background: PAPER_COLORS[i % PAPER_COLORS.length],
-                  borderRadius: 4,
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
-                  backgroundImage:
-                    'linear-gradient(135deg, transparent 49%, rgba(0,0,0,0.08) 50%, transparent 51%)',
-                  transform: `rotate(${rotate}deg)`,
-                }} />
+                <button
+                  key={position}
+                  onClick={() => handlePaperClick(position)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  disabled={isDrawn || phase !== 'idle'}
+                  style={{
+                    width: 48,
+                    height: 64,
+                    background: isDrawn ? '#e2e8f0' : color,
+                    border: isDrawn ? '2px dashed #cbd5e1' : 'none',
+                    borderRadius: '8px 8px 4px 4px',
+                    boxShadow: isDrawn
+                      ? 'none'
+                      : `0 4px 10px rgba(0,0,0,0.15), inset 0 -3px 6px rgba(0,0,0,0.08)`,
+                    cursor: isDrawn || phase !== 'idle' ? 'default' : 'pointer',
+                    backgroundImage: isDrawn
+                      ? 'none'
+                      : 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(0,0,0,0.06) 100%)',
+                    transform: isLifting
+                      ? `translateY(-50px) scale(0.6) rotate(${tilt * 3}deg)`
+                      : `rotate(${tilt}deg)`,
+                    opacity: isHidden ? 0 : 1,
+                    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s, background 0.2s',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    padding: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isDrawn && phase === 'idle') {
+                      e.currentTarget.style.transform = `translateY(-6px) rotate(${tilt}deg) scale(1.08)`;
+                      e.currentTarget.style.boxShadow = '0 8px 18px rgba(0,0,0,0.22), inset 0 -3px 6px rgba(0,0,0,0.08)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isDrawn && phase === 'idle') {
+                      e.currentTarget.style.transform = `rotate(${tilt}deg)`;
+                      e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.15), inset 0 -3px 6px rgba(0,0,0,0.08)';
+                    }
+                  }}
+                >
+                  {/* 종이 접힘 표시 */}
+                  {!isDrawn && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 8, left: '50%', marginLeft: -8,
+                      width: 16, height: 16,
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.5)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10,
+                      color: 'rgba(0,0,0,0.4)',
+                      fontWeight: 700,
+                    }}>?</div>
+                  )}
+                </button>
               );
             })}
-
-            {/* 통 라벨 */}
-            <div style={{
-              position: 'absolute', bottom: 14, left: 0, right: 0, textAlign: 'center',
-              fontSize: 12, color: '#475569', fontWeight: 700,
-              fontFamily: "'Do Hyeon', sans-serif",
-              letterSpacing: 2,
-            }}>
-              제비뽑기 통
-            </div>
           </div>
-        )}
+        </div>
 
-        {/* 날아오르는 종이 (rising 단계만) */}
-        {phase === 'rising' && drawnIdx !== null && (
+        {/* 가운데 펼쳐진 종이 (unfolding/reveal) */}
+        {(phase === 'unfolding' || phase === 'reveal') && drawnPosition !== null && (
           <div style={{
             position: 'absolute',
             left: '50%',
-            width: 70,
-            height: 56,
-            background: drawnPaperColor,
-            borderRadius: 6,
-            boxShadow: '0 16px 36px rgba(0,0,0,0.25)',
-            backgroundImage:
-              'linear-gradient(135deg, transparent 49%, rgba(0,0,0,0.12) 50%, transparent 51%)',
-            animation: 'lotsPaperRise 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-          }} />
-        )}
-
-        {/* 펼쳐진 종이 + 이름 (unfolding/reveal) */}
-        {(phase === 'unfolding' || phase === 'reveal') && drawnIdx !== null && (
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: 145,
+            top: '50%',
+            marginLeft: -160,
+            marginTop: -65,
             width: 320,
             height: 130,
-            marginLeft: -160,
             background: drawnPaperColor,
             borderRadius: 14,
             boxShadow: '0 18px 40px rgba(0,0,0,0.28)',
@@ -322,10 +334,11 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
             animation: phase === 'unfolding'
               ? 'lotsPaperUnfold 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
               : 'lotsPaperRevealPop 0.4s ease-out',
+            zIndex: 5,
           }}>
             <span style={{
               fontFamily: "'Do Hyeon', sans-serif",
-              fontSize: 44,
+              fontSize: 56,
               fontWeight: 700,
               color: '#1e293b',
               textShadow: '0 2px 4px rgba(0,0,0,0.1)',
@@ -333,19 +346,16 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
               transform: phase === 'reveal' ? 'scale(1)' : 'scale(0.4)',
               transition: 'opacity 0.35s 0.15s, transform 0.4s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
               whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              maxWidth: '88%',
             }}>
-              {drawnName}
+              {drawnNumber}번
             </span>
           </div>
         )}
 
-        {/* 색종이 폭발 (reveal) */}
+        {/* 색종이 폭발 */}
         {phase === 'reveal' && (
           <div key={confettiKey} style={{
-            position: 'absolute', inset: 0, pointerEvents: 'none',
+            position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 6,
           }}>
             {Array.from({ length: 32 }).map((_, i) => {
               const angle = (i / 32) * 360 + Math.random() * 20;
@@ -359,14 +369,13 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                   style={{
                     position: 'absolute',
                     left: '50%',
-                    top: 220,
+                    top: '50%',
                     width: 9, height: 14,
                     background: color,
                     borderRadius: 2,
                     transform: 'translate(-50%, -50%)',
                     animation: `lotsConfettiFly 0.9s ease-out forwards`,
                     animationDelay: `${i * 0.008}s`,
-                    // CSS 변수로 도착 위치 전달
                     ['--tx' as string]: `${tx}px`,
                     ['--ty' as string]: `${ty}px`,
                   } as React.CSSProperties}
@@ -376,63 +385,36 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
           </div>
         )}
 
-        {/* 모두 뽑기 완료 메시지 */}
-        {phase === 'idle' && remainingCount === 0 && totalCount > 0 && (
+        {/* 모두 뽑기 완료 */}
+        {phase === 'idle' && allDrawn && count > 0 && (
           <div style={{
             position: 'absolute',
-            top: 150, left: 0, right: 0, textAlign: 'center',
+            top: '40%', left: 0, right: 0, textAlign: 'center',
           }}>
             <IoSparkles size={48} style={{ color: '#fbbf24' }} />
             <p style={{
               fontFamily: "'Do Hyeon', sans-serif",
               fontSize: 22, color: '#7c3aed',
-              margin: '12px 0 0',
-            }}>
-              모두 뽑았어요!
-            </p>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
-              초기화 버튼으로 다시 시작할 수 있어요
-            </p>
+              margin: '8px 0 0',
+            }}>모두 뽑았어요!</p>
+          </div>
+        )}
+
+        {/* 안내 문구 */}
+        {phase === 'idle' && !allDrawn && (
+          <div style={{
+            position: 'absolute', bottom: 70, left: 0, right: 0, textAlign: 'center',
+            fontSize: 13, color: '#94a3b8',
+          }}>
+            원하는 종이를 클릭하세요
           </div>
         )}
 
         {/* 액션 버튼들 */}
         <div style={{
-          position: 'absolute', bottom: 20, left: 0, right: 0,
-          display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap',
+          position: 'absolute', bottom: 16, left: 0, right: 0,
+          display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap',
         }}>
-          {phase === 'idle' && remainingCount > 0 && (
-            <button
-              onClick={handleDraw}
-              onMouseDown={(e) => e.stopPropagation()}
-              style={{
-                padding: '14px 38px',
-                background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
-                color: 'white',
-                border: 'none',
-                borderRadius: 14,
-                fontSize: 19,
-                fontWeight: 700,
-                fontFamily: "'Do Hyeon', sans-serif",
-                cursor: 'pointer',
-                boxShadow: '0 8px 20px rgba(139,92,246,0.45)',
-                display: 'flex', alignItems: 'center', gap: 8,
-                transition: 'transform 0.15s, box-shadow 0.15s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px) scale(1.03)';
-                e.currentTarget.style.boxShadow = '0 12px 26px rgba(139,92,246,0.55)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                e.currentTarget.style.boxShadow = '0 8px 20px rgba(139,92,246,0.45)';
-              }}
-            >
-              <IoTicket size={24} />
-              뽑기
-            </button>
-          )}
-
           {phase === 'reveal' && remainingCount > 0 && (
             <button
               onClick={handleNext}
@@ -450,11 +432,11 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                 boxShadow: '0 6px 16px rgba(139,92,246,0.4)',
               }}
             >
-              한 번 더
+              다음 뽑기
             </button>
           )}
 
-          {(phase === 'idle' || phase === 'reveal') && drawn.length > 0 && (
+          {drawn.length > 0 && (phase === 'idle' || phase === 'reveal') && (
             <button
               onClick={handleResetAll}
               onMouseDown={(e) => e.stopPropagation()}
@@ -488,37 +470,13 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                 display: 'flex', alignItems: 'center', gap: 6,
               }}
             >
-              <IoCreate size={16} /> 수정
+              <IoCreate size={16} /> 인원수 변경
             </button>
           )}
         </div>
       </div>
 
       <style>{`
-        @keyframes lotsJarShake {
-          0%, 100% { transform: translateX(0) rotate(0); }
-          20% { transform: translateX(-5px) rotate(-2.5deg); }
-          40% { transform: translateX(5px) rotate(2.5deg); }
-          60% { transform: translateX(-4px) rotate(-2deg); }
-          80% { transform: translateX(4px) rotate(2deg); }
-        }
-        @keyframes lotsPaperRise {
-          0% {
-            top: 220px;
-            transform: translateX(-50%) rotate(0deg) scale(0.55);
-            opacity: 0;
-          }
-          15% { opacity: 1; }
-          60% {
-            top: 110px;
-            transform: translateX(-50%) rotate(540deg) scale(1.3);
-          }
-          100% {
-            top: 130px;
-            transform: translateX(-50%) rotate(720deg) scale(1.2);
-            opacity: 0;
-          }
-        }
         @keyframes lotsPaperUnfold {
           0% {
             transform: scaleX(0.18) scaleY(0.95);
