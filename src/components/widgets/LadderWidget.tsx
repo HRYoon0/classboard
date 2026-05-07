@@ -410,7 +410,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                 <g key={`top-${c}`}>
                   <circle
                     cx={xOf(c)}
-                    cy={yOf(0) - 18}
+                    cy={yOf(0) - 32}
                     r="14"
                     fill={isCompleted ? '#e2e8f0' : color}
                     stroke={isCurrent ? color : 'rgba(0,0,0,0.1)'}
@@ -426,7 +426,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                   />
                   <text
                     x={xOf(c)}
-                    y={yOf(0) - 14}
+                    y={yOf(0) - 28}
                     textAnchor="middle"
                     fontSize="13"
                     fontWeight="700"
