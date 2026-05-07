@@ -248,6 +248,35 @@ export default function WidgetWrapper({
           }}
           onMouseDown={(e) => e.stopPropagation()}
         >
+          <button
+            onClick={() => setShowSettings(false)}
+            aria-label="설정 닫기"
+            style={{
+              position: 'absolute',
+              top: '-10px',
+              right: '-10px',
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              border: '1px solid #e2e8f0',
+              background: 'white',
+              color: '#64748b',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '13px',
+              fontWeight: 600,
+              lineHeight: 1,
+              padding: 0,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+              zIndex: 1,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
+          >
+            ✕
+          </button>
           {settingsPanel}
         </div>
       )}
