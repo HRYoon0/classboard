@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useContainerScale } from '../../hooks/useContainerScale';
 
-type ClockStyle = 'classic' | 'minimal' | 'digital' | 'cat' | 'flower' | 'bear' | 'wave';
+type ClockStyle = 'classic' | 'minimal' | 'digital' | 'cat' | 'flower' | 'bear' | 'wave' | 'maple';
 
 interface Props {
   config: Record<string, unknown>;
@@ -40,6 +40,7 @@ export default function ClockWidget({ config }: Props) {
     flower: [220, 250],
     bear: [220, 250],
     wave: [220, 250],
+    maple: [220, 250],
   };
   const [baseW, baseH] = baseDims[clockStyle];
   const { containerRef, scale: containerScale } = useContainerScale(baseW, baseH);
@@ -49,6 +50,7 @@ export default function ClockWidget({ config }: Props) {
   if (clockStyle === 'flower') return <ScaleWrap ref={containerRef} scale={containerScale}><FlowerClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
   if (clockStyle === 'bear') return <ScaleWrap ref={containerRef} scale={containerScale}><BearClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
   if (clockStyle === 'wave') return <ScaleWrap ref={containerRef} scale={containerScale}><WaveClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
+  if (clockStyle === 'maple') return <ScaleWrap ref={containerRef} scale={containerScale}><MapleClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
 
   // classic / minimal 공통 아날로그 시계
   const size = 180;
@@ -629,6 +631,148 @@ function WaveClock({ hourAngle, minuteAngle, secondAngle, digitalTime, ampm }: A
       <div style={{ fontSize: '16px', fontWeight: 700, color: '#075985', fontVariantNumeric: 'tabular-nums' }}>
         {ampm && <span style={{ marginRight: '4px', color: '#0ea5e9' }}>{ampm}</span>}
         {digitalTime} 🌊
+      </div>
+    </div>
+  );
+}
+
+// 단풍 시계 스타일 — 가을 느낌
+function MapleClock({ hourAngle, minuteAngle, secondAngle, digitalTime, ampm }: AnalogProps) {
+  const size = 200;
+  const c = size / 2;
+  const r = 76;
+
+  // 단풍잎 한 장 (ellipse 5장 부채형 + 줄기)
+  function mapleLeaf(sx: number, sy: number, sz: number, rot: number, opacity: number, color: string) {
+    return (
+      <g transform={`translate(${sx},${sy}) rotate(${rot}) scale(${sz})`} opacity={opacity}>
+        {[-60, -30, 0, 30, 60].map((a) => (
+          <ellipse key={a} cx={0} cy={-7} rx="2.2" ry="7" fill={color}
+            transform={`rotate(${a})`} />
+        ))}
+        <line x1={0} y1={0} x2={0} y2={5} stroke="#7c2d12" strokeWidth="1" strokeLinecap="round" />
+      </g>
+    );
+  }
+
+  // 떨어지는 단풍잎 6개 — 위치/딜레이/지속/이모지/사이즈 다양화
+  const fallingLeaves = [
+    { left: '8%',  delay: 0,   dur: 5.5, emoji: '🍁', size: 18 },
+    { left: '24%', delay: 1.2, dur: 6.2, emoji: '🍂', size: 16 },
+    { left: '40%', delay: 0.5, dur: 5.0, emoji: '🍁', size: 20 },
+    { left: '56%', delay: 2.1, dur: 6.8, emoji: '🍂', size: 14 },
+    { left: '72%', delay: 0.8, dur: 5.4, emoji: '🍁', size: 17 },
+    { left: '88%', delay: 1.7, dur: 5.9, emoji: '🍂', size: 15 },
+  ];
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: '100%', gap: '4px', position: 'relative', overflow: 'hidden',
+    }}>
+      <style>{`
+        @keyframes leafFall {
+          0%   { transform: translateY(-20px) translateX(0)    rotate(0deg);   opacity: 0; }
+          10%  { opacity: 0.9; }
+          25%  { transform: translateY(60px)  translateX(14px) rotate(90deg); }
+          50%  { transform: translateY(120px) translateX(-14px) rotate(180deg); }
+          75%  { transform: translateY(180px) translateX(14px) rotate(270deg); }
+          95%  { opacity: 0.6; }
+          100% { transform: translateY(240px) translateX(0)    rotate(360deg); opacity: 0; }
+        }
+      `}</style>
+
+      {/* 떨어지는 단풍잎 (이모지) */}
+      {fallingLeaves.map((leaf, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          left: leaf.left,
+          top: '-20px',
+          fontSize: `${leaf.size}px`,
+          opacity: 0,
+          animation: `leafFall ${leaf.dur}s ease-in ${leaf.delay}s infinite`,
+          pointerEvents: 'none',
+          zIndex: 1,
+          lineHeight: 1,
+        }}>{leaf.emoji}</div>
+      ))}
+
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <defs>
+          <radialGradient id="maple-bg" cx="0.5" cy="0.5" r="0.6">
+            <stop offset="0%" stopColor="#fef3c7" />
+            <stop offset="60%" stopColor="#fed7aa" />
+            <stop offset="100%" stopColor="#fdba74" />
+          </radialGradient>
+        </defs>
+
+        {/* 배경 원 */}
+        <circle cx={c} cy={c} r={r} fill="url(#maple-bg)" />
+        <circle cx={c} cy={c} r={r} fill="none" stroke="#92400e" strokeWidth="2.5" />
+
+        {/* 시계 안 장식 단풍잎 4장 (1.5/4.5/7.5/10.5시 위치, 각각 다른 가을 색) */}
+        {([
+          { hour: 1.5,  color: '#dc2626' }, // 빨강
+          { hour: 4.5,  color: '#ea580c' }, // 주황
+          { hour: 7.5,  color: '#eab308' }, // 노랑
+          { hour: 10.5, color: '#c2410c' }, // 짙은 주황
+        ]).map(({ hour, color }, i) => {
+          const angle = (hour * 30 - 90) * (Math.PI / 180);
+          const dr = r - 14;
+          const lx = c + dr * Math.cos(angle);
+          const ly = c + dr * Math.sin(angle);
+          return <g key={i}>{mapleLeaf(lx, ly, 0.95, hour * 30 + 10, 0.85, color)}</g>;
+        })}
+
+        {/* 분 눈금 점 (12, 3, 6, 9 제외) */}
+        {Array.from({ length: 12 }).map((_, i) => {
+          if (i % 3 === 0) return null;
+          const angle = (i * 30 - 90) * (Math.PI / 180);
+          const dr = r - 10;
+          return (
+            <circle key={i} cx={c + dr * Math.cos(angle)} cy={c + dr * Math.sin(angle)}
+              r="1.8" fill="#92400e" opacity="0.5" />
+          );
+        })}
+
+        {/* 12, 3, 6, 9 숫자 — 흰 외곽선으로 가독성 확보 */}
+        {[
+          { n: '12', x: c, y: c - r + 16 },
+          { n: '3', x: c + r - 16, y: c },
+          { n: '6', x: c, y: c + r - 14 },
+          { n: '9', x: c - r + 16, y: c },
+        ].map(({ n, x, y }) => (
+          <text key={n} x={x} y={y} textAnchor="middle" dominantBaseline="central"
+            fill="#7c2d12" fontSize="14" fontWeight="700"
+            stroke="#fffbeb" strokeWidth="2.5" paintOrder="stroke"
+            style={{ pointerEvents: 'none' }}>{n}</text>
+        ))}
+
+        {/* 시침 */}
+        <line x1={c} y1={c}
+          x2={c + 32 * Math.sin(hourAngle * Math.PI / 180)}
+          y2={c - 32 * Math.cos(hourAngle * Math.PI / 180)}
+          stroke="#7c2d12" strokeWidth="3.8" strokeLinecap="round" />
+        {/* 분침 */}
+        <line x1={c} y1={c}
+          x2={c + 48 * Math.sin(minuteAngle * Math.PI / 180)}
+          y2={c - 48 * Math.cos(minuteAngle * Math.PI / 180)}
+          stroke="#92400e" strokeWidth="2.6" strokeLinecap="round" />
+        {/* 초침 — 선명한 빨강 */}
+        <line x1={c} y1={c}
+          x2={c + 54 * Math.sin(secondAngle * Math.PI / 180)}
+          y2={c - 54 * Math.cos(secondAngle * Math.PI / 180)}
+          stroke="#dc2626" strokeWidth="1.4" strokeLinecap="round" />
+
+        {/* 중심 — 도토리 느낌 (몸통 + 캡) */}
+        <circle cx={c} cy={c} r="5" fill="#a16207" stroke="#7c2d12" strokeWidth="1.2" />
+        <path d={`M ${c - 4},${c - 1} A 4 3 0 0 1 ${c + 4},${c - 1} Z`} fill="#7c2d12" />
+        <circle cx={c} cy={c + 0.5} r="1.2" fill="#fef3c7" opacity="0.7" />
+      </svg>
+
+      <div style={{ fontSize: '16px', fontWeight: 700, color: '#7c2d12', fontVariantNumeric: 'tabular-nums' }}>
+        {ampm && <span style={{ marginRight: '4px', color: '#dc2626' }}>{ampm}</span>}
+        {digitalTime} 🍁
       </div>
     </div>
   );
