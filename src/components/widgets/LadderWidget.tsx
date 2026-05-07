@@ -108,11 +108,11 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   // 레이아웃 — 학생 가시성 위해 박스/도트/폰트 크게
   const COLS = Math.max(2, Math.min(12, count));
   const LANE_W =
-    COLS <= 4 ? 180 :
-    COLS <= 6 ? 160 :
-    COLS <= 8 ? 134 :
-    COLS <= 10 ? 112 :
-    96;
+    COLS <= 4 ? 200 :
+    COLS <= 6 ? 180 :
+    COLS <= 8 ? 150 :
+    COLS <= 10 ? 126 :
+    108;
   const ROW_H = COLS <= 8 ? 32 : 27;
   const ROWS = Math.max(14, Math.floor(COLS * 1.8));
   const PADDING_X = 56;
@@ -121,7 +121,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const ladderW = (COLS - 1) * LANE_W + PADDING_X * 2;
   const ladderH = ROWS * ROW_H + PADDING_TOP + PADDING_BOTTOM;
 
-  const BOX_W = LANE_W - 16;
+  const BOX_W = LANE_W - 8;
   const BOX_H = 66;
   const DOT_R = 26;
   const DOT_GAP = 16; // 도트와 박스 사이 간격
