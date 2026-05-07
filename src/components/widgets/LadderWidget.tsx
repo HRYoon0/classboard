@@ -126,11 +126,13 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const DOT_R = 22;
   const DOT_GAP = 14; // 도트와 박스 사이 간격
 
-  // 헤더(96: 제목+설명) + 도트(54) + 위박스(BOX_H+10) + 사다리 + 아래박스(BOX_H+10) + 안내(36) + 버튼(54) + 마진
+  // 헤더(72: 제목+설명) + 도트 + 위박스 + 사다리 + 아래박스 + 안내(28) + 버튼(46) + 마진(12)
+  const HEADER_H = 72;
+  const FOOTER_H = 28 + 46 + 12; // 안내 + 버튼 + 마진
   const innerW = showInput ? 420 : Math.max(520, ladderW + 40);
   const innerH = showInput
-    ? 440
-    : 96 + (DOT_R * 2 + DOT_GAP) + (BOX_H + 10) + ladderH + (BOX_H + 10) + 36 + 54 + 24;
+    ? 420
+    : HEADER_H + (DOT_R * 2 + DOT_GAP) + (BOX_H + 10) + ladderH + (BOX_H + 10) + FOOTER_H;
 
   const { containerRef, scale } = useContainerScale(innerW, innerH);
 
@@ -263,22 +265,12 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
           transform: `scale(${scale})`,
           transformOrigin: 'center center',
           width: 420,
-          height: 440,
-          padding: '34px 28px',
-          background: '#fffdf5',
-          border: '2px dashed #cbd5e1',
-          borderRadius: 18,
-          boxShadow: '0 12px 28px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(0,0,0,0.03)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18,
+          height: 420,
+          padding: '24px 28px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
           fontFamily: "'Do Hyeon', sans-serif",
           position: 'relative',
         }}>
-          {/* 노트 상단 줄 장식 */}
-          <div style={{
-            position: 'absolute', top: 14, left: 24, right: 24, height: 1,
-            borderBottom: '1px dashed #e2e8f0',
-          }} />
-
           <p style={{
             fontSize: 50, color: '#1e293b', margin: '12px 0 0 0',
             letterSpacing: '-1px',
@@ -353,8 +345,9 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const traveledPoints = pointsRef.current.slice(0, riderStep + 1);
 
   // SVG 위치 (도트 + 위박스 아래에 사다리)
-  const ladderTop = 96 + (DOT_R * 2) + DOT_GAP + (BOX_H + 10);
-  const topBoxY = 96 + (DOT_R * 2) + DOT_GAP;
+  const dotY = HEADER_H;
+  const topBoxY = dotY + (DOT_R * 2) + DOT_GAP;
+  const ladderTop = topBoxY + (BOX_H + 10);
   const bottomBoxY = ladderTop + ladderH + 10;
 
   return (
@@ -367,27 +360,24 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
         transformOrigin: 'center center',
         position: 'relative',
         width: innerW, height: innerH,
-        background: '#fffdf5',
-        border: '2px dashed #cbd5e1',
-        borderRadius: 18,
-        boxShadow: '0 12px 28px rgba(0,0,0,0.08)',
         fontFamily: "'Do Hyeon', sans-serif",
       }}>
         {/* 제목 */}
         <div style={{
-          position: 'absolute', top: 12, left: 0, right: 0, textAlign: 'center',
-          fontSize: 46, fontWeight: 700, color: '#1e293b',
+          position: 'absolute', top: 6, left: 0, right: 0, textAlign: 'center',
+          fontSize: 38, fontWeight: 700, color: '#1e293b',
           letterSpacing: '-0.5px',
           textShadow: '3px 3px 0 rgba(14,165,233,0.15)',
           fontFamily: "'Gaegu', sans-serif",
+          lineHeight: 1.1,
         }}>
           🪜 사다리게임!
         </div>
 
         {/* 통계 */}
         <div style={{
-          position: 'absolute', top: 68, left: 0, right: 0, textAlign: 'center',
-          fontSize: 18, color: '#64748b',
+          position: 'absolute', top: 48, left: 0, right: 0, textAlign: 'center',
+          fontSize: 17, color: '#64748b',
           fontFamily: "'Gaegu', sans-serif",
         }}>
           남은 사람 <b style={{ color: '#0ea5e9' }}>{remainingCount}</b> / {count}
@@ -396,7 +386,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
         {/* 상단 클릭 도트 (사다리 타기 트리거) — SVG 컨테이너 위에 별도 레이어 */}
         <div style={{
           position: 'absolute',
-          top: 96,
+          top: dotY,
           left: '50%',
           marginLeft: -ladderW / 2,
           width: ladderW,
@@ -703,8 +693,8 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
         {phase === 'idle' && !allDone && (
           <div style={{
             position: 'absolute',
-            bottom: 70, left: 0, right: 0, textAlign: 'center',
-            fontSize: 17, color: '#94a3b8',
+            bottom: 58, left: 0, right: 0, textAlign: 'center',
+            fontSize: 15, color: '#94a3b8',
             fontFamily: "'Gaegu', sans-serif",
           }}>
             위/아래 칸을 채우고 색깔 도트를 눌러 시작해요
@@ -713,7 +703,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
 
         {/* 액션 버튼 */}
         <div style={{
-          position: 'absolute', bottom: 16, left: 0, right: 0,
+          position: 'absolute', bottom: 10, left: 0, right: 0,
           display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap',
         }}>
           {(completed.length > 0) && phase === 'idle' && (

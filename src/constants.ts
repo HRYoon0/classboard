@@ -18,7 +18,7 @@ export const WIDGET_META: Record<WidgetType, WidgetMeta> = {
   image: { type: 'image', label: '이미지', icon: '🖼️', defaultW: 400, defaultH: 320 },
   pomodoro: { type: 'pomodoro', label: '뽀모도로', icon: '🍅', defaultW: 380, defaultH: 480 },
   lots: { type: 'lots', label: '제비뽑기', icon: '🎫', defaultW: 480, defaultH: 540 },
-  ladder: { type: 'ladder', label: '사다리 타기', icon: '🪜', defaultW: 820, defaultH: 940 },
+  ladder: { type: 'ladder', label: '사다리 타기', icon: '🪜', defaultW: 820, defaultH: 860 },
 };
 
 export const WIDGET_LIST = Object.values(WIDGET_META);
