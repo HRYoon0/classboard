@@ -202,6 +202,51 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
             const spacing = 62;
             const yOffset = anchorPos.y - (i + 1) * spacing;
 
+            const buttonStyle: React.CSSProperties = {
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '8px 16px 8px 10px',
+              background: 'rgba(255,255,255,0.95)',
+              backdropFilter: 'blur(12px)',
+              borderRadius: 14,
+              border: '1px solid rgba(255,255,255,0.6)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'transform 0.12s, box-shadow 0.12s',
+              textDecoration: 'none',
+            };
+
+            const handleEnter = (e: React.MouseEvent<HTMLElement>) => {
+              e.currentTarget.style.transform = 'scale(1.08)';
+              e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.15)';
+            };
+            const handleLeave = (e: React.MouseEvent<HTMLElement>) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
+            };
+
+            const inner = (
+              <>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  background: `${item.color}15`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: item.color, flexShrink: 0,
+                }}>
+                  {item.icon}
+                </div>
+                <span style={{
+                  fontFamily: "'Do Hyeon', sans-serif",
+                  fontSize: '15px',
+                  color: '#334155',
+                }}>
+                  {item.label}
+                </span>
+              </>
+            );
+
             return (
               <div
                 key={item.type}
@@ -214,48 +259,30 @@ export default function Toolbar({ onAddWidget, onOpenSettings }: Props) {
                   zIndex: 10001 + i,
                 }}
               >
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleItemClick(item); }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 16px 8px 10px',
-                    background: 'rgba(255,255,255,0.95)',
-                    backdropFilter: 'blur(12px)',
-                    borderRadius: 14,
-                    border: '1px solid rgba(255,255,255,0.6)',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'transform 0.12s, box-shadow 0.12s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.08)';
-                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.15)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
-                  }}
-                >
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 10,
-                    background: `${item.color}15`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: item.color, flexShrink: 0,
-                  }}>
-                    {item.icon}
-                  </div>
-                  <span style={{
-                    fontFamily: "'Do Hyeon', sans-serif",
-                    fontSize: '15px',
-                    color: '#334155',
-                  }}>
-                    {item.label}
-                  </span>
-                </button>
+                {item.external ? (
+                  <a
+                    href={item.external}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => { e.stopPropagation(); setOpenCategoryId(null); }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseEnter={handleEnter}
+                    onMouseLeave={handleLeave}
+                    style={buttonStyle}
+                  >
+                    {inner}
+                  </a>
+                ) : (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleItemClick(item); }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseEnter={handleEnter}
+                    onMouseLeave={handleLeave}
+                    style={buttonStyle}
+                  >
+                    {inner}
+                  </button>
+                )}
               </div>
             );
           })}
