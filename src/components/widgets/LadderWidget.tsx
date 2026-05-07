@@ -13,14 +13,24 @@ const LANE_COLORS = [
 ];
 
 // 가로대(rungs) 무작위 생성 — rungs[row][col] = col과 col+1 사이 가로대 여부
-// 같은 행의 인접한 위치엔 가로대 동시 배치 금지 (경로 모호성 방지)
+// 교대 패턴(짝수/홀수 위치)으로 인접 제약 자동 충족 + 좌우 이동 빈도 ↑
 function generateRungs(cols: number, rows: number): boolean[][] {
   const rungs: boolean[][] = [];
+  let lastWasEven: boolean | null = null;
   for (let r = 0; r < rows; r++) {
     const row: boolean[] = new Array(Math.max(0, cols - 1)).fill(false);
-    for (let c = 0; c < cols - 1; c++) {
-      if (c > 0 && row[c - 1]) continue; // 인접 가로대 방지
-      if (Math.random() < 0.45) row[c] = true;
+    // 짝수/홀수 위치 교대로 — 연속해서 같은 패턴이면 변경
+    let useEven: boolean;
+    if (lastWasEven === null) {
+      useEven = Math.random() < 0.5;
+    } else {
+      // 같은 패턴이 연속 안 되도록 70% 확률로 반전
+      useEven = Math.random() < 0.7 ? !lastWasEven : lastWasEven;
+    }
+    lastWasEven = useEven;
+    // 선택된 위치(짝수 또는 홀수)에 70% 확률로 가로대
+    for (let c = useEven ? 0 : 1; c < cols - 1; c += 2) {
+      if (Math.random() < 0.72) row[c] = true;
     }
     rungs.push(row);
   }
