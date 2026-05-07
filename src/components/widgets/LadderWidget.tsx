@@ -56,23 +56,24 @@ type Phase = 'idle' | 'riding' | 'reveal';
 export default function LadderWidget({ config, onConfigChange }: Props) {
   const count = (config.count as number) || 0;
   const blankCount = (config.blankCount as number) || 0;
+  const winCount = Math.max(0, count - blankCount); // UI에는 당첨 수로 표시
   const rungs: boolean[][] = (config.rungs as boolean[][]) || [];
   const results: boolean[] = (config.results as boolean[]) || [];
   const completed: number[] = (config.completed as number[]) || [];
 
   const [showInput, setShowInput] = useState(!count);
-  const [editCount, setEditCount] = useState(count || 4);
-  const [editBlanks, setEditBlanks] = useState(blankCount || 1);
+  const [editCount, setEditCount] = useState(count || 6);
+  const [editWins, setEditWins] = useState(winCount || 3);
   const [riderCol, setRiderCol] = useState<number | null>(null);
   const [riderStep, setRiderStep] = useState(0);
   const [phase, setPhase] = useState<Phase>('idle');
   const [revealLane, setRevealLane] = useState<number | null>(null);
   const timersRef = useRef<number[]>([]);
 
-  // 레이아웃 계산 — 가로 우선 비율 + 사다리 길게 + 큰 폰트
-  const COLS = Math.max(2, Math.min(8, count));
-  const ROWS = Math.max(9, COLS + 4); // 사다리 길이 (적당히)
-  const LANE_W = COLS <= 4 ? 110 : 92;
+  // 레이아웃 계산 — 가로 우선 비율 + 사다리 길게 + 큰 폰트 (최대 12명)
+  const COLS = Math.max(2, Math.min(12, count));
+  const ROWS = Math.max(9, COLS + 4);
+  const LANE_W = COLS <= 4 ? 110 : COLS <= 8 ? 92 : 76;
   const ROW_H = 38;
   const PADDING_X = 48;
   const PADDING_TOP = 84;
@@ -115,7 +116,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
 
   useEffect(() => {
     if (count) setEditCount(count);
-    setEditBlanks(blankCount);
+    setEditWins(Math.max(0, count - blankCount));
   }, [count, blankCount]);
 
   useEffect(() => {
@@ -188,8 +189,9 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   };
 
   const handleSubmit = () => {
-    const validCount = Math.max(2, Math.min(8, editCount));
-    const validBlanks = Math.max(0, Math.min(validCount - 1, editBlanks));
+    const validCount = Math.max(2, Math.min(12, editCount));
+    const validWins = Math.max(1, Math.min(validCount, editWins));
+    const validBlanks = validCount - validWins;
     const newRows = Math.max(9, validCount + 4);
     onConfigChange({
       ...config,
@@ -206,8 +208,9 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   // ─── 입력 화면 ───
   if (showInput) {
     const isValid =
-      editCount >= 2 && editCount <= 8 &&
-      editBlanks >= 0 && editBlanks < editCount;
+      editCount >= 2 && editCount <= 12 &&
+      editWins >= 1 && editWins <= editCount;
+    const previewBlanks = Math.max(0, editCount - editWins);
     return (
       <div ref={containerRef} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -226,7 +229,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
 
           {/* 참가자 수 */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>참가자 수 (2~8)</p>
+            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>참가자 수 (2~12)</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button
                 onClick={() => setEditCount((c) => Math.max(2, c - 1))}
@@ -236,7 +239,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               <input
                 type="number"
                 min={2}
-                max={8}
+                max={12}
                 value={editCount}
                 onChange={(e) => setEditCount(Number(e.target.value) || 0)}
                 onMouseDown={(e) => e.stopPropagation()}
@@ -244,46 +247,46 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                 style={countInputStyle}
               />
               <button
-                onClick={() => setEditCount((c) => Math.min(8, c + 1))}
+                onClick={() => setEditCount((c) => Math.min(12, c + 1))}
                 onMouseDown={(e) => e.stopPropagation()}
                 style={countBtnStyle}
               >+</button>
             </div>
           </div>
 
-          {/* 꽝 개수 */}
+          {/* 당첨(통과) 개수 */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-              꽝 개수 (0 ~ {Math.max(0, editCount - 1)})
+              당첨 개수 (1 ~ {editCount})
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button
-                onClick={() => setEditBlanks((b) => Math.max(0, b - 1))}
+                onClick={() => setEditWins((w) => Math.max(1, w - 1))}
                 onMouseDown={(e) => e.stopPropagation()}
-                style={{ ...countBtnStyle, background: '#fef2f2', color: '#dc2626' }}
+                style={{ ...countBtnStyle, background: '#fef9c3', color: '#ca8a04' }}
               >−</button>
               <input
                 type="number"
-                min={0}
-                max={editCount - 1}
-                value={editBlanks}
-                onChange={(e) => setEditBlanks(Number(e.target.value) || 0)}
+                min={1}
+                max={editCount}
+                value={editWins}
+                onChange={(e) => setEditWins(Number(e.target.value) || 0)}
                 onMouseDown={(e) => e.stopPropagation()}
                 onKeyDown={(e) => { if (e.key === 'Enter' && isValid) handleSubmit(); }}
-                style={{ ...countInputStyle, color: '#dc2626' }}
+                style={{ ...countInputStyle, color: '#ca8a04' }}
               />
               <button
-                onClick={() => setEditBlanks((b) => Math.min(editCount - 1, b + 1))}
+                onClick={() => setEditWins((w) => Math.min(editCount, w + 1))}
                 onMouseDown={(e) => e.stopPropagation()}
-                style={{ ...countBtnStyle, background: '#fef2f2', color: '#dc2626' }}
+                style={{ ...countBtnStyle, background: '#fef9c3', color: '#ca8a04' }}
               >+</button>
             </div>
           </div>
 
           <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-            <b style={{ color: '#0ea5e9' }}>통과 {Math.max(0, editCount - editBlanks)}개</b>
+            <b style={{ color: '#ca8a04' }}>통과 {Math.max(0, Math.min(editCount, editWins))}개</b>
             {' / '}
-            <b style={{ color: '#dc2626' }}>꽝 {editBlanks}개</b>
+            <b style={{ color: '#dc2626' }}>꽝 {previewBlanks}개</b>
           </p>
 
           <button
@@ -346,7 +349,9 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
         }}>
           남은 사람: <b style={{ color: '#0ea5e9' }}>{remainingCount}</b> / {count}
           {' · '}
-          꽝 {blankCount}개 포함
+          <b style={{ color: '#ca8a04' }}>당첨 {winCount}</b>
+          {' · '}
+          <b style={{ color: '#dc2626' }}>꽝 {blankCount}</b>
         </div>
 
         {/* 사다리 SVG */}
