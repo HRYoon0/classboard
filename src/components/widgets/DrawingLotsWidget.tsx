@@ -634,31 +634,29 @@ function PaperNote({ color, isDrawn, drawnIsWin }: {
   drawnIsWin: boolean;
 }) {
   if (isDrawn) {
-    // 뽑힌 자리 — 결과에 따라 이모지/라벨 다름
+    // 뽑힌 자리 — 결과에 따라 이모지/라벨 다름 (SVG로 동일 크기 유지)
     return (
-      <div style={{
-        width: 46, height: 60,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        gap: 1,
-        background: drawnIsWin ? '#fef9c3' : '#e2e8f0',
-        border: drawnIsWin ? '1.2px dashed #fbbf24' : '1.2px dashed #cbd5e1',
-        borderRadius: 4,
-        margin: '5px 5px 19px',
-      }}>
-        <span style={{ fontSize: 22, lineHeight: 1 }}>
+      <svg width="46" height="60" viewBox="0 0 46 60" style={{ display: 'block' }}>
+        <rect x="3" y="5" width="40" height="50" rx="4"
+          fill={drawnIsWin ? '#fef9c3' : '#e2e8f0'}
+          stroke={drawnIsWin ? '#fbbf24' : '#cbd5e1'}
+          strokeWidth="1.2"
+          strokeDasharray="3 2"
+        />
+        {/* 이모지 */}
+        <text x="23" y="32" textAnchor="middle"
+          fontSize="20"
+          style={{ dominantBaseline: 'middle' }}>
           {drawnIsWin ? '😄' : '😭'}
-        </span>
-        <span style={{
-          fontSize: 9,
-          fontWeight: 700,
-          fontFamily: "'Do Hyeon', sans-serif",
-          color: drawnIsWin ? '#ca8a04' : '#64748b',
-          lineHeight: 1,
-        }}>
+        </text>
+        {/* 라벨 */}
+        <text x="23" y="50" textAnchor="middle"
+          fontSize="9" fontWeight="700"
+          fill={drawnIsWin ? '#ca8a04' : '#64748b'}
+          fontFamily="'Do Hyeon', sans-serif">
           {drawnIsWin ? '통과' : '꽝'}
-        </span>
-      </div>
+        </text>
+      </svg>
     );
   }
 
