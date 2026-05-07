@@ -38,9 +38,9 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   const timersRef = useRef<number[]>([]);
 
   // 인원수에 따라 그리드 크기 동적 계산 (위젯 크기 조절과 연동)
-  const PAPER_W = 46;
-  const PAPER_H = 70;
-  const GRID_GAP = 6;
+  const PAPER_W = 50;
+  const PAPER_H = 60;
+  const GRID_GAP = 8;
   const cols = count <= 7 ? Math.max(2, count) : 7;
   const rows = count > 0 ? Math.ceil(count / cols) : 1;
   const gridH = rows * PAPER_H + Math.max(0, rows - 1) * GRID_GAP;
@@ -504,81 +504,42 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   );
 }
 
-// ─── 쪽지(풍선/구슬 모양) 컴포넌트 ───
-// 네이버 제비뽑기 스타일: 위에 매듭 + 둥근 본체 (46×70)
+// ─── 쪽지(종이접기 X자 모양) ───
+// 한국식 접은 종이: X자 접힘선 + 꼬리 부분 (46×60)
 function PaperNote({ color, isDrawn }: { color: string; isDrawn: boolean }) {
   if (isDrawn) {
     return (
-      <div style={{ position: 'relative', width: 46, height: 70 }}>
-        <div style={{
-          position: 'absolute',
-          top: 14, left: 3,
-          width: 40, height: 54,
-          border: '1.5px dashed #cbd5e1',
-          borderRadius: '50% 50% 45% 45% / 35% 35% 50% 50%',
-          background: '#f8fafc',
-        }} />
-      </div>
+      <svg width="46" height="60" viewBox="0 0 46 60" style={{ display: 'block' }}>
+        <rect x="5" y="5" width="36" height="36"
+          fill="#f8fafc"
+          stroke="#cbd5e1"
+          strokeWidth="1.2"
+          strokeDasharray="3 2"
+          rx="2"
+        />
+      </svg>
     );
   }
 
   return (
-    <div style={{ position: 'relative', width: 46, height: 70 }}>
-      {/* 매듭 (위쪽 작은 공) */}
-      <div style={{
-        position: 'absolute',
-        top: 0, left: '50%', marginLeft: -5,
-        width: 10, height: 10,
-        background: '#8b6f47',
-        borderRadius: '50%',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-      }}>
-        {/* 매듭 빛 반사 */}
-        <div style={{
-          position: 'absolute',
-          top: 2, left: 2,
-          width: 3, height: 3,
-          background: 'rgba(255,255,255,0.5)',
-          borderRadius: '50%',
-        }} />
-      </div>
+    <svg width="46" height="60" viewBox="0 0 46 60" style={{ display: 'block', overflow: 'visible' }}>
+      {/* 꼬리 (오른쪽 아래 비스듬히 튀어나온 작은 사각형) — 본체보다 먼저 그려서 뒤에 배치 */}
+      <g transform="translate(34, 44) rotate(28)">
+        <rect x="-11" y="-6" width="22" height="12" fill={color} rx="1" />
+      </g>
 
-      {/* 끈 (매듭과 본체 연결) */}
-      <div style={{
-        position: 'absolute',
-        top: 9, left: '50%', marginLeft: -1,
-        width: 2, height: 8,
-        background: '#8b6f47',
-      }} />
+      {/* 메인 정사각 본체 */}
+      <rect x="5" y="5" width="36" height="36" fill={color} rx="2" />
 
-      {/* 본체 (풍선/구슬 모양) */}
-      <div style={{
-        position: 'absolute',
-        top: 15, left: 3,
-        width: 40, height: 53,
-        background: color,
-        borderRadius: '50% 50% 45% 45% / 35% 35% 50% 50%',
-        boxShadow: '0 4px 8px rgba(0,0,0,0.18), inset 0 -4px 8px rgba(0,0,0,0.07)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 16,
-        fontWeight: 700,
-        color: 'rgba(0,0,0,0.32)',
-        fontFamily: "'Do Hyeon', sans-serif",
-        overflow: 'hidden',
-      }}>
-        {/* 빛 반사 */}
-        <div style={{
-          position: 'absolute',
-          top: 6, left: 6,
-          width: 9, height: 14,
-          background: 'rgba(255,255,255,0.4)',
-          borderRadius: '50%',
-          filter: 'blur(0.5px)',
-        }} />
-        ?
-      </div>
-    </div>
+      {/* X자 접힘선 (흰색) */}
+      <line x1="5" y1="5" x2="41" y2="41"
+        stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.95" />
+      <line x1="41" y1="5" x2="5" y2="41"
+        stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.95" />
+
+      {/* 본체 윤곽 살짝 강조 */}
+      <rect x="5" y="5" width="36" height="36"
+        fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="0.5" rx="2" />
+    </svg>
   );
 }
