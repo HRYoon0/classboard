@@ -184,9 +184,9 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
     onConfigChange({ ...config, bottomLabels: next });
   };
 
-  // 사다리 타기 시작
+  // 사다리 타기 시작 — 완료된 컬럼도 재클릭 시 결과 다시 확인 가능
   const ride = (startCol: number) => {
-    if (phase !== 'idle' || completed.includes(startCol)) return;
+    if (phase !== 'idle') return;
     const colPath = computePath(startCol, rungs, COLS);
     const points: { x: number; y: number }[] = [];
     points.push({ x: xOf(colPath[0]), y: yOf(0) - DOT_GAP });
@@ -215,7 +215,10 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
       window.setTimeout(() => {
         setRevealLane(endCol);
         setPhase('reveal');
-        onConfigChange({ ...config, completed: [...completed, startCol] });
+        const nextCompleted = completed.includes(startCol)
+          ? completed
+          : [...completed, startCol];
+        onConfigChange({ ...config, completed: nextCompleted });
       }, totalDuration + 200)
     );
   };
@@ -401,7 +404,8 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                 key={`top-dot-${c}`}
                 onClick={() => ride(c)}
                 onMouseDown={(e) => e.stopPropagation()}
-                disabled={isCompleted || phase !== 'idle'}
+                disabled={phase !== 'idle'}
+                title={isCompleted ? '다시 보기' : undefined}
                 style={{
                   position: 'absolute',
                   left: xOf(c) - DOT_R,
@@ -411,8 +415,10 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                   borderRadius: '50%',
                   background: isCompleted ? '#e2e8f0' : color,
                   border: isCurrent ? `3px solid ${color}` : '2px solid rgba(0,0,0,0.1)',
-                  boxShadow: !isCompleted && phase === 'idle' ? '0 4px 10px rgba(0,0,0,0.2)' : 'none',
-                  cursor: !isCompleted && phase === 'idle' ? 'pointer' : 'default',
+                  boxShadow: phase === 'idle'
+                    ? (isCompleted ? '0 2px 6px rgba(0,0,0,0.12)' : '0 4px 10px rgba(0,0,0,0.2)')
+                    : 'none',
+                  cursor: phase === 'idle' ? 'pointer' : 'default',
                   fontSize: 24,
                   fontWeight: 700,
                   color: isCompleted ? '#94a3b8' : '#1e293b',
