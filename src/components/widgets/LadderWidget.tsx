@@ -12,27 +12,57 @@ const LANE_COLORS = [
   '#a78bfa', '#60a5fa', '#34d399', '#fde047',
 ];
 
-// 가로대(rungs) 무작위 생성 — 자연스러운 zigzag를 위한 무작위 배치
-// 인접 가로대 금지(경로 모호성 방지) + 높은 밀도(직진 구간 최소화)
+// 가로대(rungs) 생성 — 무작위 순열을 목표로 역산해서 배치
+// → 각 라인이 시작 위치에서 평균 COLS/3 컬럼만큼 멀리 이동 (넓은 zigzag)
 function generateRungs(cols: number, rows: number): boolean[][] {
-  const rungs: boolean[][] = [];
-  for (let r = 0; r < rows; r++) {
-    const row: boolean[] = new Array(Math.max(0, cols - 1)).fill(false);
-    // 시작 방향 무작위로 매번 바꿔 좌우 편향 방지
-    const startFromLeft = Math.random() < 0.5;
-    if (startFromLeft) {
-      for (let c = 0; c < cols - 1; c++) {
-        if (c > 0 && row[c - 1]) continue;
-        if (Math.random() < 0.6) row[c] = true;
-      }
-    } else {
-      for (let c = cols - 2; c >= 0; c--) {
-        if (c < cols - 2 && row[c + 1]) continue;
-        if (Math.random() < 0.6) row[c] = true;
+  const rungs: boolean[][] = Array.from({ length: rows }, () =>
+    new Array(Math.max(0, cols - 1)).fill(false)
+  );
+  if (cols < 2) return rungs;
+
+  // 1. 무작위 순열 생성 — 고정점(σ(i)=i)이 너무 많으면 재시도
+  let perm: number[] = [];
+  for (let attempt = 0; attempt < 10; attempt++) {
+    perm = Array.from({ length: cols }, (_, i) => i);
+    for (let i = perm.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [perm[i], perm[j]] = [perm[j], perm[i]];
+    }
+    const fixedPoints = perm.filter((v, i) => v === i).length;
+    // 고정점 1개 이하면 OK (대부분 라인이 이동)
+    if (fixedPoints <= 1) break;
+  }
+
+  // 2. 버블 정렬로 인접 transposition 시퀀스 추출
+  const arr = [...perm];
+  const swapList: number[] = [];
+  for (let i = 0; i < arr.length - 1; i++) {
+    for (let j = 0; j < arr.length - 1 - i; j++) {
+      if (arr[j] > arr[j + 1]) {
+        [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+        swapList.push(j);
       }
     }
-    rungs.push(row);
   }
+
+  // 3. swap을 행에 배치 (순서 + 인접 제약 유지)
+  const nextRow = new Array(Math.max(0, cols - 1)).fill(0);
+  for (const gap of swapList) {
+    let r = nextRow[gap];
+    while (r < rows) {
+      // 같은 행에 인접 가로대 금지
+      if (gap > 0 && rungs[r][gap - 1]) { r++; continue; }
+      if (gap < cols - 2 && rungs[r][gap + 1]) { r++; continue; }
+      rungs[r][gap] = true;
+      // 다음 가능 행 갱신 (자기 + 인접 gap 모두)
+      nextRow[gap] = r + 1;
+      if (gap > 0) nextRow[gap - 1] = Math.max(nextRow[gap - 1], r + 1);
+      if (gap < cols - 2) nextRow[gap + 1] = Math.max(nextRow[gap + 1], r + 1);
+      break;
+    }
+    // 행 부족으로 못 두면 스킵 (희박 — 결과 permutation 살짝 어긋남)
+  }
+
   return rungs;
 }
 
@@ -86,8 +116,9 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
     COLS <= 8 ? 110 :
     COLS <= 10 ? 90 :
     74;
-  const ROW_H = COLS <= 8 ? 36 : 30;
-  const ROWS = Math.max(12, COLS + (COLS <= 8 ? 7 : 5));
+  const ROW_H = COLS <= 8 ? 32 : 26;
+  // 무작위 순열을 충분히 표현할 수 있도록 — 평균 swap = COLS*(COLS-1)/4
+  const ROWS = Math.max(14, Math.floor(COLS * 1.8));
   const PADDING_X = 60;
   const PADDING_TOP = 84;
   const PADDING_BOTTOM = 92;
@@ -211,7 +242,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
     const validCount = Math.max(2, Math.min(12, editCount));
     const validWins = Math.max(1, Math.min(validCount, editWins));
     const validBlanks = validCount - validWins;
-    const newRows = Math.max(12, validCount + (validCount <= 8 ? 7 : 5));
+    const newRows = Math.max(14, Math.floor(validCount * 1.8));
     onConfigChange({
       ...config,
       count: validCount,
