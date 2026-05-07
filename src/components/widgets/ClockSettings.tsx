@@ -11,7 +11,7 @@ const CLOCK_STYLES = [
   { id: 'flower', label: '🌸 벚꽃', desc: '꽃잎이 흩날리는 시계' },
   { id: 'bear', label: '🐻 곰돌이', desc: '볼 터치 곰돌이 시계' },
   { id: 'wave', label: '🌊 파도', desc: '여름 바다가 일렁이는 시계' },
-  { id: 'maple', label: '🍁 단풍', desc: '가을 단풍잎이 떨어지는 시계' },
+  { id: 'maple', label: '🍁 단풍', desc: '낙엽이 떨어지는 시계' },
 ];
 
 export default function ClockSettings({ config, onConfigChange }: Props) {
@@ -78,7 +78,7 @@ export default function ClockSettings({ config, onConfigChange }: Props) {
             }}>
               {style.label}
             </span>
-            <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '8px' }}>{style.desc}</span>
+            <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '8px', wordBreak: 'keep-all' }}>{style.desc}</span>
           </div>
           {clockStyle === style.id && (
             <span style={{ fontSize: '13px', color: '#6366f1' }}>✓</span>
