@@ -81,7 +81,8 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const ladderH = ROWS * ROW_H + PADDING_TOP + PADDING_BOTTOM;
 
   const innerW = showInput ? 380 : Math.max(420, ladderW + 20);
-  const innerH = showInput ? 380 : ladderH + 90;
+  // ladderH 위에 헤더(70) + 아래에 안내 문구(20) + 버튼(50) + 마진(20) = 160 여유
+  const innerH = showInput ? 380 : 70 + ladderH + 90;
 
   const { containerRef, scale } = useContainerScale(innerW, innerH);
 
