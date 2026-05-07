@@ -36,7 +36,20 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [confettiKey, setConfettiKey] = useState(0);
   const timersRef = useRef<number[]>([]);
-  const { containerRef, scale } = useContainerScale(440, 480);
+
+  // 인원수에 따라 그리드 크기 동적 계산 (위젯 크기 조절과 연동)
+  const PAPER_W = 46;
+  const PAPER_H = 70;
+  const GRID_GAP = 6;
+  const cols = count <= 7 ? Math.max(2, count) : 7;
+  const rows = count > 0 ? Math.ceil(count / cols) : 1;
+  const gridH = rows * PAPER_H + Math.max(0, rows - 1) * GRID_GAP;
+
+  // 화면 모드에 따른 base 치수
+  const innerW = showInput ? 380 : 440;
+  const innerH = showInput ? 360 : 80 + gridH + 100;
+
+  const { containerRef, scale } = useContainerScale(innerW, innerH);
 
   // count가 설정되어 있는데 assignment가 없거나 길이가 안 맞으면 재셔플
   useEffect(() => {
@@ -203,8 +216,6 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   }
 
   // ─── 추첨 화면 ───
-  // 종이 그리드 레이아웃 계산
-  const cols = count <= 16 ? Math.min(8, count) : count <= 36 ? 6 : 7;
   const allDrawn = remainingCount === 0;
 
   return (
@@ -216,7 +227,7 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
         transform: `scale(${scale})`,
         transformOrigin: 'center center',
         position: 'relative',
-        width: 440, height: 480,
+        width: innerW, height: innerH,
       }}>
         {/* 제목 */}
         <div style={{
@@ -235,7 +246,7 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
           남은 종이: <b style={{ color: '#7c3aed' }}>{remainingCount}</b> / {count}
         </div>
 
-        {/* 종이 그리드 */}
+        {/* 종이(쪽지) 그리드 */}
         <div style={{
           position: 'absolute',
           top: 70, left: 0, right: 0,
@@ -243,9 +254,8 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
         }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${cols}, 48px)`,
-            gap: 8,
-            maxWidth: 420,
+            gridTemplateColumns: `repeat(${cols}, ${PAPER_W}px)`,
+            gap: GRID_GAP,
           }}>
             {assignment.map((_, position) => {
               const isDrawn = drawn.includes(position);
@@ -262,54 +272,34 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                   onMouseDown={(e) => e.stopPropagation()}
                   disabled={isDrawn || phase !== 'idle'}
                   style={{
-                    width: 48,
-                    height: 64,
-                    background: isDrawn ? '#e2e8f0' : color,
-                    border: isDrawn ? '2px dashed #cbd5e1' : 'none',
-                    borderRadius: '8px 8px 4px 4px',
-                    boxShadow: isDrawn
-                      ? 'none'
-                      : `0 4px 10px rgba(0,0,0,0.15), inset 0 -3px 6px rgba(0,0,0,0.08)`,
+                    width: PAPER_W,
+                    height: PAPER_H,
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
                     cursor: isDrawn || phase !== 'idle' ? 'default' : 'pointer',
-                    backgroundImage: isDrawn
-                      ? 'none'
-                      : 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(0,0,0,0.06) 100%)',
                     transform: isLifting
-                      ? `translateY(-50px) scale(0.6) rotate(${tilt * 3}deg)`
+                      ? `translateY(-60px) scale(0.55) rotate(${tilt * 4}deg)`
                       : `rotate(${tilt}deg)`,
                     opacity: isHidden ? 0 : 1,
-                    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s, background 0.2s',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    padding: 0,
+                    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s',
+                    transformOrigin: 'center center',
+                    filter: isDrawn ? 'none' : 'drop-shadow(0 4px 6px rgba(0,0,0,0.18))',
                   }}
                   onMouseEnter={(e) => {
                     if (!isDrawn && phase === 'idle') {
-                      e.currentTarget.style.transform = `translateY(-6px) rotate(${tilt}deg) scale(1.08)`;
-                      e.currentTarget.style.boxShadow = '0 8px 18px rgba(0,0,0,0.22), inset 0 -3px 6px rgba(0,0,0,0.08)';
+                      e.currentTarget.style.transform = `translateY(-8px) rotate(${tilt}deg) scale(1.08)`;
+                      e.currentTarget.style.filter = 'drop-shadow(0 10px 14px rgba(0,0,0,0.28))';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!isDrawn && phase === 'idle') {
                       e.currentTarget.style.transform = `rotate(${tilt}deg)`;
-                      e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.15), inset 0 -3px 6px rgba(0,0,0,0.08)';
+                      e.currentTarget.style.filter = 'drop-shadow(0 4px 6px rgba(0,0,0,0.18))';
                     }
                   }}
                 >
-                  {/* 종이 접힘 표시 */}
-                  {!isDrawn && (
-                    <div style={{
-                      position: 'absolute',
-                      top: 8, left: '50%', marginLeft: -8,
-                      width: 16, height: 16,
-                      borderRadius: '50%',
-                      background: 'rgba(255,255,255,0.5)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 10,
-                      color: 'rgba(0,0,0,0.4)',
-                      fontWeight: 700,
-                    }}>?</div>
-                  )}
+                  <PaperNote color={color} isDrawn={isDrawn} />
                 </button>
               );
             })}
@@ -477,6 +467,9 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
       </div>
 
       <style>{`
+        .lots-paper-shine {
+          mix-blend-mode: overlay;
+        }
         @keyframes lotsPaperUnfold {
           0% {
             transform: scaleX(0.18) scaleY(0.95);
@@ -508,5 +501,56 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
         }
       `}</style>
     </div>
+  );
+}
+
+// ─── 쪽지(종이 노트) SVG 컴포넌트 ───
+// 위에 작은 탭 + 끈 구멍 + 본체로 구성된 한국식 쪽지 모양 (46×70)
+function PaperNote({ color, isDrawn }: { color: string; isDrawn: boolean }) {
+  if (isDrawn) {
+    return (
+      <svg width="46" height="70" viewBox="0 0 46 70" style={{ display: 'block' }}>
+        <rect x="3" y="12" width="40" height="55" rx="5"
+          fill="#f8fafc"
+          stroke="#cbd5e1"
+          strokeWidth="1"
+          strokeDasharray="3 2"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg width="46" height="70" viewBox="0 0 46 70" style={{ display: 'block' }}>
+      {/* 본체 */}
+      <rect x="3" y="12" width="40" height="56" rx="5" fill={color} />
+
+      {/* 본체 하단 그림자 */}
+      <rect x="3" y="60" width="40" height="8" rx="5" fill="rgba(0,0,0,0.08)" />
+
+      {/* 본체 상단 빛 반사 */}
+      <ellipse cx="12" cy="22" rx="7" ry="12" fill="white" opacity="0.32" />
+
+      {/* 상단 탭 */}
+      <rect x="17" y="2" width="12" height="12" rx="3" fill={color} />
+
+      {/* 탭 빛 반사 */}
+      <rect x="18" y="3" width="3.5" height="5" rx="1.5" fill="white" opacity="0.4" />
+
+      {/* 끈 구멍 */}
+      <circle cx="23" cy="8" r="2" fill="rgba(0,0,0,0.42)" />
+      <circle cx="23" cy="7.4" r="0.6" fill="rgba(255,255,255,0.4)" />
+
+      {/* "?" 표시 */}
+      <text x="23" y="45" textAnchor="middle"
+        fill="rgba(0,0,0,0.32)" fontSize="16" fontWeight="700"
+        fontFamily="'Do Hyeon', sans-serif">?</text>
+
+      {/* 본체 윤곽 */}
+      <rect x="3" y="12" width="40" height="56" rx="5"
+        fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="0.7" />
+      <rect x="17" y="2" width="12" height="12" rx="3"
+        fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="0.7" />
+    </svg>
   );
 }
