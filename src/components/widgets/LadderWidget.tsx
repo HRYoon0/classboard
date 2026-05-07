@@ -90,15 +90,21 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const xOf = (c: number) => PADDING_X + c * LANE_W;
   const yOf = (r: number) => PADDING_TOP + r * ROW_H;
 
-  // count/blankCount 변경 시 사다리 재생성
+  // count/blankCount 변경 시 사다리 재생성 (구버전 데이터 자동 마이그레이션 포함)
   useEffect(() => {
-    if (count > 0 && (rungs.length === 0 || results.length !== count)) {
-      onConfigChange({
-        ...config,
-        rungs: generateRungs(COLS, ROWS),
-        results: generateResults(count, blankCount),
-        completed: [],
-      });
+    if (count > 0) {
+      const dimensionsOk =
+        rungs.length === ROWS &&
+        rungs.length > 0 &&
+        rungs[0].length === Math.max(0, COLS - 1);
+      if (!dimensionsOk || results.length !== count) {
+        onConfigChange({
+          ...config,
+          rungs: generateRungs(COLS, ROWS),
+          results: generateResults(count, blankCount),
+          completed: [],
+        });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [count, blankCount]);
