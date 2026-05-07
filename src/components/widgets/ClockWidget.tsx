@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useContainerScale } from '../../hooks/useContainerScale';
 
-type ClockStyle = 'classic' | 'minimal' | 'digital' | 'cat' | 'flower' | 'bear' | 'wave' | 'maple';
+type ClockStyle = 'classic' | 'minimal' | 'digital' | 'cat' | 'flower' | 'bear' | 'wave' | 'maple' | 'snow';
 
 interface Props {
   config: Record<string, unknown>;
@@ -41,6 +41,7 @@ export default function ClockWidget({ config }: Props) {
     bear: [220, 250],
     wave: [220, 250],
     maple: [220, 250],
+    snow: [220, 250],
   };
   const [baseW, baseH] = baseDims[clockStyle];
   const { containerRef, scale: containerScale } = useContainerScale(baseW, baseH);
@@ -51,6 +52,7 @@ export default function ClockWidget({ config }: Props) {
   if (clockStyle === 'bear') return <ScaleWrap ref={containerRef} scale={containerScale}><BearClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
   if (clockStyle === 'wave') return <ScaleWrap ref={containerRef} scale={containerScale}><WaveClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
   if (clockStyle === 'maple') return <ScaleWrap ref={containerRef} scale={containerScale}><MapleClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
+  if (clockStyle === 'snow') return <ScaleWrap ref={containerRef} scale={containerScale}><SnowClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
 
   // classic / minimal 공통 아날로그 시계
   const size = 180;
@@ -746,6 +748,136 @@ function MapleClock({ hourAngle, minuteAngle, secondAngle, digitalTime, ampm }: 
       <div style={{ fontSize: '16px', fontWeight: 700, color: '#7c2d12', fontVariantNumeric: 'tabular-nums' }}>
         {ampm && <span style={{ marginRight: '4px', color: '#dc2626' }}>{ampm}</span>}
         {digitalTime} 🍁
+      </div>
+    </div>
+  );
+}
+
+// 눈 시계 스타일 — 겨울 느낌
+function SnowClock({ hourAngle, minuteAngle, secondAngle, digitalTime, ampm }: AnalogProps) {
+  const size = 200;
+  const c = size / 2;
+  const r = 76;
+
+  // 떨어지는 눈송이/눈가루 — 종류 섞어 깊이감
+  const fallingSnow = [
+    { left: '6%',  delay: 0,   dur: 6.5, type: 'flake', size: 16 },
+    { left: '18%', delay: 1.4, dur: 7.0, type: 'dust',  size: 5 },
+    { left: '30%', delay: 0.6, dur: 5.8, type: 'flake', size: 18 },
+    { left: '42%', delay: 2.0, dur: 7.5, type: 'dust',  size: 4 },
+    { left: '54%', delay: 0.9, dur: 6.2, type: 'flake', size: 13 },
+    { left: '66%', delay: 1.8, dur: 5.5, type: 'dust',  size: 6 },
+    { left: '78%', delay: 0.3, dur: 7.2, type: 'flake', size: 15 },
+    { left: '90%', delay: 2.4, dur: 6.0, type: 'dust',  size: 5 },
+  ];
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: '100%', gap: '4px', position: 'relative', overflow: 'hidden',
+    }}>
+      <style>{`
+        @keyframes snowFall {
+          0%   { transform: translateY(-20px) translateX(0)   rotate(0deg);   opacity: 0; }
+          10%  { opacity: 0.95; }
+          30%  { transform: translateY(70px)  translateX(8px) rotate(45deg); }
+          60%  { transform: translateY(140px) translateX(-8px) rotate(135deg); }
+          90%  { opacity: 0.65; }
+          100% { transform: translateY(240px) translateX(0)   rotate(270deg); opacity: 0; }
+        }
+      `}</style>
+
+      {/* 떨어지는 눈송이 + 눈가루 */}
+      {fallingSnow.map((s, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          left: s.left,
+          top: '-20px',
+          width: s.type === 'dust' ? `${s.size}px` : 'auto',
+          height: s.type === 'dust' ? `${s.size}px` : 'auto',
+          borderRadius: s.type === 'dust' ? '50%' : 0,
+          background: s.type === 'dust' ? 'white' : 'transparent',
+          fontSize: s.type === 'flake' ? `${s.size}px` : 0,
+          opacity: 0,
+          animation: `snowFall ${s.dur}s ease-in ${s.delay}s infinite`,
+          pointerEvents: 'none',
+          zIndex: 1,
+          lineHeight: 1,
+          boxShadow: s.type === 'dust' ? '0 0 6px rgba(255,255,255,0.9)' : 'none',
+        }}>
+          {s.type === 'flake' ? '❄️' : ''}
+        </div>
+      ))}
+
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <defs>
+          <radialGradient id="snow-bg" cx="0.5" cy="0.5" r="0.65">
+            <stop offset="0%" stopColor="#f8fafc" />
+            <stop offset="55%" stopColor="#e0e7ff" />
+            <stop offset="100%" stopColor="#cbd5e1" />
+          </radialGradient>
+        </defs>
+
+        {/* 배경 원 */}
+        <circle cx={c} cy={c} r={r} fill="url(#snow-bg)" />
+        <circle cx={c} cy={c} r={r} fill="none" stroke="#3730a3" strokeWidth="2.5" />
+
+        {/* 분 눈금 점 (12, 3, 6, 9 제외) */}
+        {Array.from({ length: 12 }).map((_, i) => {
+          if (i % 3 === 0) return null;
+          const angle = (i * 30 - 90) * (Math.PI / 180);
+          const dr = r - 10;
+          return (
+            <circle key={i} cx={c + dr * Math.cos(angle)} cy={c + dr * Math.sin(angle)}
+              r="1.8" fill="#3730a3" opacity="0.5" />
+          );
+        })}
+
+        {/* 12, 3, 6, 9 숫자 — 흰 외곽선으로 가독성 */}
+        {[
+          { n: '12', x: c, y: c - r + 16 },
+          { n: '3', x: c + r - 16, y: c },
+          { n: '6', x: c, y: c + r - 14 },
+          { n: '9', x: c - r + 16, y: c },
+        ].map(({ n, x, y }) => (
+          <text key={n} x={x} y={y} textAnchor="middle" dominantBaseline="central"
+            fill="#1e1b4b" fontSize="14" fontWeight="700"
+            stroke="white" strokeWidth="2.5" paintOrder="stroke"
+            style={{ pointerEvents: 'none' }}>{n}</text>
+        ))}
+
+        {/* 시침 */}
+        <line x1={c} y1={c}
+          x2={c + 32 * Math.sin(hourAngle * Math.PI / 180)}
+          y2={c - 32 * Math.cos(hourAngle * Math.PI / 180)}
+          stroke="#1e1b4b" strokeWidth="3.8" strokeLinecap="round" />
+        {/* 분침 */}
+        <line x1={c} y1={c}
+          x2={c + 48 * Math.sin(minuteAngle * Math.PI / 180)}
+          y2={c - 48 * Math.cos(minuteAngle * Math.PI / 180)}
+          stroke="#3730a3" strokeWidth="2.6" strokeLinecap="round" />
+        {/* 초침 — 차가운 청록 */}
+        <line x1={c} y1={c}
+          x2={c + 54 * Math.sin(secondAngle * Math.PI / 180)}
+          y2={c - 54 * Math.cos(secondAngle * Math.PI / 180)}
+          stroke="#0ea5e9" strokeWidth="1.4" strokeLinecap="round" />
+
+        {/* 중심 — 6갈래 미니 눈송이 */}
+        <g transform={`translate(${c} ${c})`}>
+          {[0, 60, 120, 180, 240, 300].map((rot) => (
+            <g key={rot} transform={`rotate(${rot})`}>
+              <line x1={0} y1={0} x2={0} y2={-6} stroke="#1e1b4b" strokeWidth="1.4" strokeLinecap="round" />
+              <line x1={0} y1={-4} x2={1.6} y2={-5.2} stroke="#1e1b4b" strokeWidth="0.9" strokeLinecap="round" />
+              <line x1={0} y1={-4} x2={-1.6} y2={-5.2} stroke="#1e1b4b" strokeWidth="0.9" strokeLinecap="round" />
+            </g>
+          ))}
+          <circle r="1.8" fill="#3730a3" />
+        </g>
+      </svg>
+
+      <div style={{ fontSize: '16px', fontWeight: 700, color: '#1e1b4b', fontVariantNumeric: 'tabular-nums' }}>
+        {ampm && <span style={{ marginRight: '4px', color: '#0ea5e9' }}>{ampm}</span>}
+        {digitalTime} ❄️
       </div>
     </div>
   );
