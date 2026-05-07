@@ -480,32 +480,35 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
           </svg>
         </div>
 
-        {/* 결과 토스트 */}
+        {/* 결과 토스트 — 사다리 위에 떠 있는 모달 (가운데) */}
         {phase === 'reveal' && riderCol !== null && revealLane !== null && (
           <div
             onClick={dismissReveal}
             onMouseDown={(e) => e.stopPropagation()}
             style={{
               position: 'absolute',
-              top: 70,
+              top: '50%',
               left: '50%',
-              transform: 'translateX(-50%)',
-              padding: '10px 22px',
+              transform: 'translate(-50%, -50%)',
+              padding: '14px 26px',
               background: results[revealLane] ? '#fef3c7' : '#475569',
               color: results[revealLane] ? '#92400e' : '#fff',
-              borderRadius: 12,
+              borderRadius: 14,
               fontFamily: "'Do Hyeon', sans-serif",
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: 700,
-              boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+              boxShadow: results[revealLane]
+                ? '0 12px 28px rgba(0,0,0,0.25), 0 0 24px rgba(251,191,36,0.5)'
+                : '0 12px 28px rgba(0,0,0,0.3)',
               animation: 'ladderResultPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
               cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 8,
+              display: 'flex', alignItems: 'center', gap: 10,
               zIndex: 10,
+              border: `2px solid ${results[revealLane] ? '#fbbf24' : '#1e293b'}`,
             }}
           >
             <span>{riderCol + 1}번 →</span>
-            <span style={{ fontSize: 24 }}>
+            <span style={{ fontSize: 32 }}>
               {results[revealLane] ? '😄' : '😭'}
             </span>
             <span>{results[revealLane] ? '통과!' : '꽝'}</span>
@@ -516,18 +519,20 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
         {allDone && phase === 'idle' && (
           <div style={{
             position: 'absolute',
-            top: 70,
+            top: '50%',
             left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '10px 22px',
+            transform: 'translate(-50%, -50%)',
+            padding: '12px 26px',
             background: '#0ea5e9',
             color: 'white',
-            borderRadius: 12,
+            borderRadius: 14,
             fontFamily: "'Do Hyeon', sans-serif",
-            fontSize: 17,
+            fontSize: 18,
             fontWeight: 700,
+            boxShadow: '0 12px 28px rgba(14,165,233,0.4)',
+            zIndex: 10,
           }}>
-            모두 완료!
+            ✨ 모두 완료!
           </div>
         )}
 
@@ -570,9 +575,9 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
 
       <style>{`
         @keyframes ladderResultPop {
-          0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
-          70% { transform: translateX(-50%) scale(1.08); opacity: 1; }
-          100% { transform: translateX(-50%) scale(1); opacity: 1; }
+          0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+          70% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
       `}</style>
     </div>
