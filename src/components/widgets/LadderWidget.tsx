@@ -12,25 +12,26 @@ const LANE_COLORS = [
   '#a78bfa', '#60a5fa', '#34d399', '#fde047',
 ];
 
-// 가로대(rungs) 생성 — 무작위 순열을 목표로 역산해서 배치
-// → 각 라인이 시작 위치에서 평균 COLS/3 컬럼만큼 멀리 이동 (넓은 zigzag)
+// 가로대(rungs) 생성 — 무작위 순열을 사다리 전체에 분산 배치
+// → 모든 라인이 사다리 위/중/아래 어디서나 좌우 이동
 function generateRungs(cols: number, rows: number): boolean[][] {
   const rungs: boolean[][] = Array.from({ length: rows }, () =>
     new Array(Math.max(0, cols - 1)).fill(false)
   );
   if (cols < 2) return rungs;
 
-  // 1. 무작위 순열 생성 — 고정점(σ(i)=i)이 너무 많으면 재시도
+  // 1. 무작위 순열 — 평균 변위가 충분히 큰 것만 채택
   let perm: number[] = [];
-  for (let attempt = 0; attempt < 10; attempt++) {
+  for (let attempt = 0; attempt < 12; attempt++) {
     perm = Array.from({ length: cols }, (_, i) => i);
     for (let i = perm.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [perm[i], perm[j]] = [perm[j], perm[i]];
     }
     const fixedPoints = perm.filter((v, i) => v === i).length;
-    // 고정점 1개 이하면 OK (대부분 라인이 이동)
-    if (fixedPoints <= 1) break;
+    const avgDispl = perm.reduce((s, v, i) => s + Math.abs(v - i), 0) / perm.length;
+    // 고정점 ≤ 1 + 평균 변위 ≥ COLS/3.5
+    if (fixedPoints <= 1 && avgDispl >= cols / 3.5) break;
   }
 
   // 2. 버블 정렬로 인접 transposition 시퀀스 추출
@@ -45,22 +46,22 @@ function generateRungs(cols: number, rows: number): boolean[][] {
     }
   }
 
-  // 3. swap을 행에 배치 (순서 + 인접 제약 유지)
+  // 3. swap을 행에 분산 배치 — 무작위 유효 행 선택으로 사다리 전체에 흩뿌림
   const nextRow = new Array(Math.max(0, cols - 1)).fill(0);
   for (const gap of swapList) {
-    let r = nextRow[gap];
-    while (r < rows) {
-      // 같은 행에 인접 가로대 금지
-      if (gap > 0 && rungs[r][gap - 1]) { r++; continue; }
-      if (gap < cols - 2 && rungs[r][gap + 1]) { r++; continue; }
-      rungs[r][gap] = true;
-      // 다음 가능 행 갱신 (자기 + 인접 gap 모두)
-      nextRow[gap] = r + 1;
-      if (gap > 0) nextRow[gap - 1] = Math.max(nextRow[gap - 1], r + 1);
-      if (gap < cols - 2) nextRow[gap + 1] = Math.max(nextRow[gap + 1], r + 1);
-      break;
+    const candidates: number[] = [];
+    for (let r = nextRow[gap]; r < rows; r++) {
+      if (gap > 0 && rungs[r][gap - 1]) continue;
+      if (gap < cols - 2 && rungs[r][gap + 1]) continue;
+      candidates.push(r);
     }
-    // 행 부족으로 못 두면 스킵 (희박 — 결과 permutation 살짝 어긋남)
+    if (candidates.length === 0) continue;
+    // 무작위 행 선택 (위에서 아래로 흩뿌림)
+    const r = candidates[Math.floor(Math.random() * candidates.length)];
+    rungs[r][gap] = true;
+    nextRow[gap] = r + 1;
+    if (gap > 0) nextRow[gap - 1] = Math.max(nextRow[gap - 1], r + 1);
+    if (gap < cols - 2) nextRow[gap + 1] = Math.max(nextRow[gap + 1], r + 1);
   }
 
   return rungs;
