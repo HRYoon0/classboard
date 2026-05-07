@@ -15,9 +15,11 @@ const PAPER_COLORS = [
   '#d9f99d', '#fef3c7', '#ddd6fe', '#fed7e2',
 ];
 
-// Fisher-Yates 셔플
-function shuffle(n: number): number[] {
-  const arr = Array.from({ length: n }, (_, i) => i);
+// Fisher-Yates 셔플로 당첨/꽝 배치 생성 (true=당첨, false=꽝)
+function makeAssignment(total: number, blanks: number): boolean[] {
+  const arr: boolean[] = [];
+  for (let i = 0; i < total - blanks; i++) arr.push(true);
+  for (let i = 0; i < blanks; i++) arr.push(false);
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -27,17 +29,19 @@ function shuffle(n: number): number[] {
 
 export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   const count = (config.count as number) || 0;
+  const blankCount = (config.blankCount as number) || 0;
   const drawn: number[] = (config.drawn as number[]) || [];
-  const assignment: number[] = (config.assignment as number[]) || [];
+  const assignment: boolean[] = (config.assignment as boolean[]) || [];
 
   const [showInput, setShowInput] = useState(!count);
   const [editCount, setEditCount] = useState(count || 25);
+  const [editBlanks, setEditBlanks] = useState(blankCount || 5);
   const [drawnPosition, setDrawnPosition] = useState<number | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [confettiKey, setConfettiKey] = useState(0);
   const timersRef = useRef<number[]>([]);
 
-  // 인원수에 따라 그리드 크기 동적 계산 (위젯 크기 조절과 연동)
+  // 그리드 크기 동적 계산
   const PAPER_W = 50;
   const PAPER_H = 60;
   const GRID_GAP = 8;
@@ -45,28 +49,27 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   const rows = count > 0 ? Math.ceil(count / cols) : 1;
   const gridH = rows * PAPER_H + Math.max(0, rows - 1) * GRID_GAP;
 
-  // 화면 모드에 따른 base 치수
   const innerW = showInput ? 380 : 440;
-  const innerH = showInput ? 360 : 80 + gridH + 100;
+  const innerH = showInput ? 380 : 80 + gridH + 100;
 
   const { containerRef, scale } = useContainerScale(innerW, innerH);
 
-  // count가 설정되어 있는데 assignment가 없거나 길이가 안 맞으면 재셔플
+  // count/blankCount가 바뀌었거나 assignment 길이 안 맞으면 재셔플
   useEffect(() => {
     if (count > 0 && assignment.length !== count) {
-      onConfigChange({ ...config, assignment: shuffle(count), drawn: [] });
+      onConfigChange({ ...config, assignment: makeAssignment(count, blankCount), drawn: [] });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count]);
+  }, [count, blankCount]);
 
-  // 클라우드 로드로 인원수가 설정되면 결과 화면으로 자동 전환
   useEffect(() => {
     if (count) setShowInput(false);
   }, [count]);
 
   useEffect(() => {
     if (count) setEditCount(count);
-  }, [count]);
+    setEditBlanks(blankCount);
+  }, [count, blankCount]);
 
   useEffect(() => {
     return () => timersRef.current.forEach(clearTimeout);
@@ -84,7 +87,6 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
       timersRef.current.push(window.setTimeout(fn, ms));
 
     t(400, () => setPhase('unfolding'));
-    // 펼침 애니메이션: paperPop 0.4s + 플랩 0.4s 지연 + 0.7s 회전 ≈ 1.1초
     t(1500, () => {
       setPhase('reveal');
       setConfettiKey((k) => k + 1);
@@ -100,30 +102,42 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   const handleResetAll = () => {
     setDrawnPosition(null);
     setPhase('idle');
-    onConfigChange({ ...config, drawn: [], assignment: shuffle(count) });
+    onConfigChange({
+      ...config,
+      drawn: [],
+      assignment: makeAssignment(count, blankCount),
+    });
   };
 
   const handleSubmit = () => {
     const validCount = Math.max(2, Math.min(99, editCount));
-    onConfigChange({ ...config, count: validCount, drawn: [], assignment: shuffle(validCount) });
+    const validBlanks = Math.max(0, Math.min(validCount - 1, editBlanks));
+    onConfigChange({
+      ...config,
+      count: validCount,
+      blankCount: validBlanks,
+      drawn: [],
+      assignment: makeAssignment(validCount, validBlanks),
+    });
     setShowInput(false);
     setDrawnPosition(null);
     setPhase('idle');
   };
 
   const remainingCount = count - drawn.length;
-  const drawnNumber =
-    drawnPosition !== null && assignment[drawnPosition] !== undefined
-      ? assignment[drawnPosition] + 1
-      : 0;
+  const isWinner =
+    drawnPosition !== null && assignment[drawnPosition] === true;
   const drawnPaperColor =
     drawnPosition !== null
       ? PAPER_COLORS[drawnPosition % PAPER_COLORS.length]
       : '#fde68a';
+  const allDrawn = remainingCount === 0;
 
   // ─── 입력 화면 ───
   if (showInput) {
-    const isValid = editCount >= 2 && editCount <= 99;
+    const isValid =
+      editCount >= 2 && editCount <= 99 &&
+      editBlanks >= 0 && editBlanks < editCount;
     return (
       <div ref={containerRef} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -133,62 +147,73 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
           transform: `scale(${scale})`,
           transformOrigin: 'center center',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          gap: 18, width: 380,
+          gap: 14, width: 380,
         }}>
           <p style={{
             fontFamily: "'Do Hyeon', sans-serif",
             fontSize: 26, color: '#7c3aed', margin: 0,
           }}>🎫 제비뽑기</p>
-          <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-            인원수를 입력하세요 (2 ~ 99)
-          </p>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <button
-              onClick={() => setEditCount((c) => Math.max(2, c - 1))}
-              onMouseDown={(e) => e.stopPropagation()}
-              style={{
-                width: 56, height: 56, borderRadius: '50%',
-                border: 'none', background: '#f1f5f9', color: '#475569',
-                fontSize: 28, fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >−</button>
-            <input
-              type="number"
-              min={2}
-              max={99}
-              value={editCount}
-              onChange={(e) => setEditCount(Number(e.target.value) || 0)}
-              onMouseDown={(e) => e.stopPropagation()}
-              onKeyDown={(e) => { if (e.key === 'Enter' && isValid) handleSubmit(); }}
-              style={{
-                width: 120, padding: '14px 8px',
-                border: '2px solid #e2e8f0',
-                borderRadius: 12,
-                fontSize: 44, fontWeight: 700, textAlign: 'center',
-                fontFamily: "'Do Hyeon', sans-serif",
-                color: '#7c3aed',
-                outline: 'none',
-              }}
-            />
-            <button
-              onClick={() => setEditCount((c) => Math.min(99, c + 1))}
-              onMouseDown={(e) => e.stopPropagation()}
-              style={{
-                width: 56, height: 56, borderRadius: '50%',
-                border: 'none', background: '#f1f5f9', color: '#475569',
-                fontSize: 28, fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >+</button>
+          {/* 전체 인원수 */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>전체 종이 수 (2~99)</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                onClick={() => setEditCount((c) => Math.max(2, c - 1))}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={countBtnStyle}
+              >−</button>
+              <input
+                type="number"
+                min={2}
+                max={99}
+                value={editCount}
+                onChange={(e) => setEditCount(Number(e.target.value) || 0)}
+                onMouseDown={(e) => e.stopPropagation()}
+                onKeyDown={(e) => { if (e.key === 'Enter' && isValid) handleSubmit(); }}
+                style={countInputStyle}
+              />
+              <button
+                onClick={() => setEditCount((c) => Math.min(99, c + 1))}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={countBtnStyle}
+              >+</button>
+            </div>
+          </div>
+
+          {/* 꽝 개수 */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
+              꽝 개수 (0 ~ {Math.max(0, editCount - 1)})
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                onClick={() => setEditBlanks((b) => Math.max(0, b - 1))}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={{ ...countBtnStyle, background: '#fef2f2', color: '#dc2626' }}
+              >−</button>
+              <input
+                type="number"
+                min={0}
+                max={editCount - 1}
+                value={editBlanks}
+                onChange={(e) => setEditBlanks(Number(e.target.value) || 0)}
+                onMouseDown={(e) => e.stopPropagation()}
+                onKeyDown={(e) => { if (e.key === 'Enter' && isValid) handleSubmit(); }}
+                style={{ ...countInputStyle, color: '#dc2626' }}
+              />
+              <button
+                onClick={() => setEditBlanks((b) => Math.min(editCount - 1, b + 1))}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={{ ...countBtnStyle, background: '#fef2f2', color: '#dc2626' }}
+              >+</button>
+            </div>
           </div>
 
           <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-            <b style={{ color: '#7c3aed', fontFamily: "'Do Hyeon', sans-serif" }}>
-              1번 ~ {Math.max(2, Math.min(99, editCount))}번
-            </b>{' '}
-            중에서 직접 뽑아요
+            <b style={{ color: '#7c3aed' }}>당첨 {Math.max(0, editCount - editBlanks)}개</b>
+            {' / '}
+            <b style={{ color: '#dc2626' }}>꽝 {editBlanks}개</b>
           </p>
 
           <button
@@ -217,8 +242,6 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   }
 
   // ─── 추첨 화면 ───
-  const allDrawn = remainingCount === 0;
-
   return (
     <div ref={containerRef} style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -239,15 +262,17 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
           🎫 제비뽑기
         </div>
 
-        {/* 남은 인원 */}
+        {/* 통계 */}
         <div style={{
           position: 'absolute', top: 38, left: 0, right: 0, textAlign: 'center',
           fontSize: 13, color: '#64748b',
         }}>
           남은 종이: <b style={{ color: '#7c3aed' }}>{remainingCount}</b> / {count}
+          {' · '}
+          꽝 {blankCount}개 포함
         </div>
 
-        {/* 종이(쪽지) 그리드 */}
+        {/* 종이 그리드 */}
         <div style={{
           position: 'absolute',
           top: 70, left: 0, right: 0,
@@ -265,6 +290,7 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
               const colorIdx = position % PAPER_COLORS.length;
               const color = PAPER_COLORS[colorIdx];
               const tilt = ((position * 13) % 9) - 4;
+              const drawnIsWin = isDrawn && assignment[position] === true;
 
               return (
                 <button
@@ -300,14 +326,14 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                     }
                   }}
                 >
-                  <PaperNote color={color} isDrawn={isDrawn} />
+                  <PaperNote color={color} isDrawn={isDrawn} drawnIsWin={drawnIsWin} />
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* 펼쳐지는 종이 — 봉투 열기 스타일 (윗 플랩이 3D로 위로 열림) */}
+        {/* 펼쳐지는 종이 — 봉투 열기 스타일 */}
         {(phase === 'unfolding' || phase === 'reveal') && drawnPosition !== null && (
           <div style={{
             position: 'absolute',
@@ -324,30 +350,39 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
               transformStyle: 'preserve-3d',
               animation: 'lotsPaperPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
             }}>
-              {/* 본체 (안쪽 내용 — 숫자가 드러남) */}
+              {/* 본체 — 결과(당첨/꽝) 표시 */}
               <div style={{
                 position: 'absolute', inset: 0,
-                background: drawnPaperColor,
+                background: isWinner ? drawnPaperColor : '#475569',
                 borderRadius: 12,
-                boxShadow: '0 14px 28px rgba(0,0,0,0.25)',
+                boxShadow: isWinner
+                  ? '0 14px 28px rgba(0,0,0,0.25), 0 0 24px rgba(251,191,36,0.4)'
+                  : '0 14px 28px rgba(0,0,0,0.25)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontFamily: "'Do Hyeon', sans-serif",
-                fontSize: 60,
                 fontWeight: 700,
-                color: '#1e293b',
+                color: isWinner ? '#1e293b' : '#fff',
+                animation: phase === 'reveal' && !isWinner
+                  ? 'lotsBlankShake 0.5s 0.3s ease-out'
+                  : 'none',
               }}>
                 <span style={{
+                  fontSize: isWinner ? 64 : 72,
                   opacity: phase === 'reveal' ? 1 : 0,
                   transform: phase === 'reveal' ? 'scale(1)' : 'scale(0.4)',
                   transition: 'opacity 0.3s 0.6s, transform 0.4s 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  textShadow: isWinner
+                    ? '0 2px 8px rgba(251,191,36,0.6)'
+                    : '0 2px 4px rgba(0,0,0,0.3)',
+                  letterSpacing: isWinner ? 0 : 4,
                 }}>
-                  {drawnNumber}번
+                  {isWinner ? '🎉 당첨!' : '꽝'}
                 </span>
               </div>
 
-              {/* 윗 플랩 (앞으로 보이는 접힌 면, 위로 회전하며 열림) */}
+              {/* 윗 플랩 */}
               <div style={{
                 position: 'absolute',
                 top: 0, left: 0,
@@ -355,13 +390,11 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                 background: drawnPaperColor,
                 borderRadius: '12px 12px 0 0',
                 transformOrigin: 'top',
-                transform: 'rotateX(0deg)',
                 animation: 'lotsFlapTopOpen 0.7s 0.3s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards',
                 backfaceVisibility: 'hidden',
                 overflow: 'hidden',
                 boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
               }}>
-                {/* X자 접힘선 — 위쪽 절반 부분 */}
                 <svg width="100%" height="260%" viewBox="0 0 280 130"
                   style={{ position: 'absolute', top: 0, left: 0 }}>
                   <line x1="20" y1="15" x2="260" y2="115"
@@ -371,7 +404,7 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                 </svg>
               </div>
 
-              {/* 아랫 플랩 (아래로 회전하며 열림) */}
+              {/* 아랫 플랩 */}
               <div style={{
                 position: 'absolute',
                 bottom: 0, left: 0,
@@ -379,13 +412,11 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                 background: drawnPaperColor,
                 borderRadius: '0 0 12px 12px',
                 transformOrigin: 'bottom',
-                transform: 'rotateX(0deg)',
                 animation: 'lotsFlapBottomOpen 0.7s 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards',
                 backfaceVisibility: 'hidden',
                 overflow: 'hidden',
                 boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
               }}>
-                {/* X자 접힘선 — 아래쪽 절반 부분 */}
                 <svg width="100%" height="260%" viewBox="0 0 280 130"
                   style={{ position: 'absolute', bottom: 0, left: 0 }}>
                   <line x1="20" y1="15" x2="260" y2="115"
@@ -398,8 +429,8 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
           </div>
         )}
 
-        {/* 색종이 폭발 */}
-        {phase === 'reveal' && (
+        {/* 색종이 폭발 — 당첨일 때만 */}
+        {phase === 'reveal' && isWinner && (
           <div key={confettiKey} style={{
             position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 6,
           }}>
@@ -414,8 +445,7 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                   key={i}
                   style={{
                     position: 'absolute',
-                    left: '50%',
-                    top: '50%',
+                    left: '50%', top: '50%',
                     width: 9, height: 14,
                     background: color,
                     borderRadius: 2,
@@ -456,7 +486,7 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
           </div>
         )}
 
-        {/* 액션 버튼들 */}
+        {/* 액션 버튼 */}
         <div style={{
           position: 'absolute', bottom: 16, left: 0, right: 0,
           display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap',
@@ -486,16 +516,7 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
             <button
               onClick={handleResetAll}
               onMouseDown={(e) => e.stopPropagation()}
-              style={{
-                padding: '10px 18px',
-                background: '#f1f5f9',
-                color: '#64748b',
-                border: 'none',
-                borderRadius: 10,
-                fontSize: 14,
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}
+              style={smallBtnStyle}
             >
               <IoRefresh size={16} /> 초기화
             </button>
@@ -505,18 +526,9 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
             <button
               onClick={() => setShowInput(true)}
               onMouseDown={(e) => e.stopPropagation()}
-              style={{
-                padding: '10px 18px',
-                background: '#f1f5f9',
-                color: '#64748b',
-                border: 'none',
-                borderRadius: 10,
-                fontSize: 14,
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}
+              style={smallBtnStyle}
             >
-              <IoCreate size={16} /> 인원수 변경
+              <IoCreate size={16} /> 설정 변경
             </button>
           )}
         </div>
@@ -545,6 +557,14 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
           0% { transform: rotateX(0deg); }
           100% { transform: rotateX(180deg); }
         }
+        @keyframes lotsBlankShake {
+          0%, 100% { transform: translateX(0); }
+          15% { transform: translateX(-8px) rotate(-1.5deg); }
+          30% { transform: translateX(8px) rotate(1.5deg); }
+          45% { transform: translateX(-6px) rotate(-1deg); }
+          60% { transform: translateX(6px) rotate(1deg); }
+          75% { transform: translateX(-3px); }
+        }
         @keyframes lotsConfettiFly {
           0% {
             transform: translate(-50%, -50%) rotate(0);
@@ -560,40 +580,72 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   );
 }
 
+// ─── 공유 스타일 ───
+const countBtnStyle: React.CSSProperties = {
+  width: 50, height: 50, borderRadius: '50%',
+  border: 'none', background: '#f1f5f9', color: '#475569',
+  fontSize: 26, fontWeight: 700, cursor: 'pointer',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+};
+
+const countInputStyle: React.CSSProperties = {
+  width: 100, padding: '10px 6px',
+  border: '2px solid #e2e8f0',
+  borderRadius: 10,
+  fontSize: 36, fontWeight: 700, textAlign: 'center',
+  fontFamily: "'Do Hyeon', sans-serif",
+  color: '#7c3aed',
+  outline: 'none',
+};
+
+const smallBtnStyle: React.CSSProperties = {
+  padding: '10px 18px',
+  background: '#f1f5f9',
+  color: '#64748b',
+  border: 'none',
+  borderRadius: 10,
+  fontSize: 14,
+  cursor: 'pointer',
+  display: 'flex', alignItems: 'center', gap: 6,
+};
+
 // ─── 쪽지(종이접기 X자 모양) ───
-// 한국식 접은 종이: X자 접힘선 + 꼬리 부분 (46×60)
-function PaperNote({ color, isDrawn }: { color: string; isDrawn: boolean }) {
+function PaperNote({ color, isDrawn, drawnIsWin }: {
+  color: string;
+  isDrawn: boolean;
+  drawnIsWin: boolean;
+}) {
   if (isDrawn) {
+    // 뽑힌 자리 — 결과에 따라 색상 다름
     return (
       <svg width="46" height="60" viewBox="0 0 46 60" style={{ display: 'block' }}>
         <rect x="5" y="5" width="36" height="36"
-          fill="#f8fafc"
-          stroke="#cbd5e1"
+          fill={drawnIsWin ? '#fef9c3' : '#e2e8f0'}
+          stroke={drawnIsWin ? '#fbbf24' : '#cbd5e1'}
           strokeWidth="1.2"
           strokeDasharray="3 2"
           rx="2"
         />
+        <text x="23" y="28" textAnchor="middle"
+          fontSize="11" fontWeight="700"
+          fill={drawnIsWin ? '#ca8a04' : '#94a3b8'}
+          fontFamily="'Do Hyeon', sans-serif">
+          {drawnIsWin ? '당첨' : '꽝'}
+        </text>
       </svg>
     );
   }
 
   return (
     <svg width="46" height="60" viewBox="0 0 46 60" style={{ display: 'block', overflow: 'visible' }}>
-      {/* 꼬리 (오른쪽 아래 비스듬히 튀어나온 작은 사각형) — 본체보다 먼저 그려서 뒤에 배치 */}
       <g transform="translate(34, 44) rotate(28)">
         <rect x="-11" y="-6" width="22" height="12" fill={color} rx="1" />
       </g>
-
-      {/* 메인 정사각 본체 */}
       <rect x="5" y="5" width="36" height="36" fill={color} rx="2" />
-
-      {/* X자 접힘선 (흰색) */}
       <line x1="5" y1="5" x2="41" y2="41"
         stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.95" />
       <line x1="41" y1="5" x2="5" y2="41"
         stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.95" />
-
-      {/* 본체 윤곽 살짝 강조 */}
       <rect x="5" y="5" width="36" height="36"
         fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="0.5" rx="2" />
     </svg>
