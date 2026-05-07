@@ -355,14 +355,27 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
 
         {/* 펼쳐지는 종이 — 봉투 열기 스타일 */}
         {(phase === 'unfolding' || phase === 'reveal') && drawnPosition !== null && (
-          <div style={{
-            position: 'absolute',
-            left: '50%', top: '50%',
-            transform: 'translate(-50%, -50%)',
-            perspective: '1000px',
-            pointerEvents: 'none',
-            zIndex: 5,
-          }}>
+          <div
+            onClick={() => {
+              // 리빌 중 결과 종이 클릭 → 닫고 idle로 (다음 뽑기 준비)
+              if (phase === 'reveal') {
+                timersRef.current.forEach(clearTimeout);
+                timersRef.current = [];
+                setDrawnPosition(null);
+                setPhase('idle');
+              }
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              position: 'absolute',
+              left: '50%', top: '50%',
+              transform: 'translate(-50%, -50%)',
+              perspective: '1000px',
+              // unfolding 중엔 통과(애니메이션 보호), reveal 중엔 클릭 잡음
+              pointerEvents: phase === 'reveal' ? 'auto' : 'none',
+              cursor: phase === 'reveal' ? 'pointer' : 'default',
+              zIndex: 5,
+            }}>
             <div style={{
               width: 280,
               height: 130,
