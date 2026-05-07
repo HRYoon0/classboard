@@ -70,11 +70,16 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const [revealLane, setRevealLane] = useState<number | null>(null);
   const timersRef = useRef<number[]>([]);
 
-  // 레이아웃 계산 — 가로 우선 비율 + 사다리 길게 + 큰 폰트 (최대 12명)
+  // 레이아웃 계산 — 컬럼 수가 많아도 디자인 폭이 일정하게 유지되도록
+  // (위젯 스케일이 일관되어 폰트가 컬럼 수에 따라 작아지지 않게)
   const COLS = Math.max(2, Math.min(12, count));
-  const ROWS = Math.max(9, COLS + 4);
-  const LANE_W = COLS <= 4 ? 110 : COLS <= 8 ? 92 : 76;
-  const ROW_H = 38;
+  const LANE_W =
+    COLS <= 4 ? 110 :
+    COLS <= 8 ? 92 :
+    COLS <= 10 ? 72 :
+    58;
+  const ROW_H = COLS <= 8 ? 38 : 32;
+  const ROWS = Math.max(9, COLS + (COLS <= 8 ? 4 : 3));
   const PADDING_X = 48;
   const PADDING_TOP = 84;
   const PADDING_BOTTOM = 92;
@@ -192,7 +197,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
     const validCount = Math.max(2, Math.min(12, editCount));
     const validWins = Math.max(1, Math.min(validCount, editWins));
     const validBlanks = validCount - validWins;
-    const newRows = Math.max(9, validCount + 4);
+    const newRows = Math.max(9, validCount + (validCount <= 8 ? 4 : 3));
     onConfigChange({
       ...config,
       count: validCount,
