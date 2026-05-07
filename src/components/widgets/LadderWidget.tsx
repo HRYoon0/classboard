@@ -356,9 +356,12 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
           marginLeft: -ladderW / 2,
         }}>
           <svg width={ladderW} height={ladderH} viewBox={`0 0 ${ladderW} ${ladderH}`}>
-            {/* 가로대 */}
-            {rungs.map((row, r) =>
-              row.map((hasRung, c) =>
+            {/* 가로대 — 안개 영역(중앙 70%)에서는 숨김 */}
+            {rungs.map((row, r) => {
+              const fogStart = Math.max(1, Math.floor(ROWS * 0.18));
+              const fogEnd = Math.min(ROWS - 1, Math.ceil(ROWS * 0.82));
+              const inFog = r >= fogStart && r <= fogEnd;
+              return row.map((hasRung, c) =>
                 hasRung ? (
                   <line
                     key={`r${r}-${c}`}
@@ -369,10 +372,11 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                     stroke="#94a3b8"
                     strokeWidth="3"
                     strokeLinecap="round"
+                    opacity={inFog ? 0 : 1}
                   />
                 ) : null
-              )
-            )}
+              );
+            })}
 
             {/* 세로 기둥 — 상단 도트와 하단 이모지까지 연결 */}
             {Array.from({ length: COLS }).map((_, c) => (
@@ -388,7 +392,49 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               />
             ))}
 
-            {/* 이동 경로 (지나간 부분 강조) */}
+            {/* 안개 영역 — 중앙 가로대를 가려 미스터리 효과 */}
+            {(() => {
+              const fogStart = Math.max(1, Math.floor(ROWS * 0.18));
+              const fogEnd = Math.min(ROWS - 1, Math.ceil(ROWS * 0.82));
+              const fy = yOf(fogStart) - ROW_H * 0.5;
+              const fh = (fogEnd - fogStart + 1) * ROW_H;
+              return (
+                <>
+                  {/* 안개 본체 */}
+                  <rect
+                    x={PADDING_X * 0.4}
+                    y={fy}
+                    width={ladderW - PADDING_X * 0.8}
+                    height={fh}
+                    fill="#dbeafe"
+                    opacity="0.65"
+                    rx="10"
+                    style={{ animation: 'ladderFogPulse 3.2s ease-in-out infinite' }}
+                  />
+                  {/* 안개 입자 (장식 점들) */}
+                  {Array.from({ length: 18 }).map((_, i) => {
+                    const fx = PADDING_X + (i * 37) % (ladderW - PADDING_X * 2);
+                    const fyDot = fy + 8 + ((i * 23) % (fh - 16));
+                    const fr = 1.5 + (i % 3);
+                    return (
+                      <circle
+                        key={`fog-${i}`}
+                        cx={fx}
+                        cy={fyDot}
+                        r={fr}
+                        fill="white"
+                        opacity={0.5}
+                        style={{
+                          animation: `ladderFogDrift ${4 + (i % 3)}s ease-in-out ${i * 0.2}s infinite`,
+                        }}
+                      />
+                    );
+                  })}
+                </>
+              );
+            })()}
+
+            {/* 이동 경로 (지나간 부분 강조) — 안개 위에 그려져 항상 보임 */}
             {phase !== 'idle' && traveledPoints.length > 1 && (
               <polyline
                 points={traveledPoints.map((p) => `${p.x},${p.y}`).join(' ')}
@@ -585,6 +631,14 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
           0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
           70% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
           100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        @keyframes ladderFogPulse {
+          0%, 100% { opacity: 0.55; }
+          50% { opacity: 0.75; }
+        }
+        @keyframes ladderFogDrift {
+          0%, 100% { transform: translate(0, 0); opacity: 0.4; }
+          50% { transform: translate(3px, -2px); opacity: 0.7; }
         }
       `}</style>
     </div>
