@@ -374,14 +374,14 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               )
             )}
 
-            {/* 세로 기둥 */}
+            {/* 세로 기둥 — 상단 도트와 하단 이모지까지 연결 */}
             {Array.from({ length: COLS }).map((_, c) => (
               <line
                 key={`col-${c}`}
                 x1={xOf(c)}
-                y1={yOf(0)}
+                y1={yOf(0) - 32}
                 x2={xOf(c)}
-                y2={yOf(ROWS)}
+                y2={yOf(ROWS) + 24}
                 stroke="#cbd5e1"
                 strokeWidth="3"
                 strokeLinecap="round"
