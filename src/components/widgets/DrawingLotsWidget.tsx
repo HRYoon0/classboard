@@ -372,7 +372,15 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                   transition: 'opacity 0.3s 0.6s, transform 0.4s 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
                   display: 'flex', alignItems: 'center', gap: 14,
                 }}>
-                  {isWinner ? <HappyFace size={88} /> : <SadFace size={88} />}
+                  <span style={{
+                    fontSize: 84,
+                    lineHeight: 1,
+                    filter: isWinner
+                      ? 'drop-shadow(0 4px 12px rgba(251,191,36,0.6))'
+                      : 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
+                  }}>
+                    {isWinner ? '😄' : '😭'}
+                  </span>
                   <span style={{
                     fontFamily: "'Do Hyeon', sans-serif",
                     fontSize: 56,
@@ -615,62 +623,6 @@ const smallBtnStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 6,
 };
 
-// ─── 활짝 웃는 얼굴 (통과) ───
-function HappyFace({ size = 88 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: 'block' }}>
-      {/* 얼굴 */}
-      <circle cx="50" cy="50" r="45" fill="#fbbf24"
-        stroke="#f59e0b" strokeWidth="2" />
-      {/* 볼 (홍조) */}
-      <ellipse cx="26" cy="58" rx="7" ry="5" fill="#f87171" opacity="0.5" />
-      <ellipse cx="74" cy="58" rx="7" ry="5" fill="#f87171" opacity="0.5" />
-      {/* 눈 (반달 — 활짝 웃을 때) */}
-      <path d="M 28 38 Q 35 30 42 38"
-        stroke="#1e293b" strokeWidth="4" fill="none" strokeLinecap="round" />
-      <path d="M 58 38 Q 65 30 72 38"
-        stroke="#1e293b" strokeWidth="4" fill="none" strokeLinecap="round" />
-      {/* 큰 미소 */}
-      <path d="M 26 58 Q 50 82 74 58"
-        stroke="#1e293b" strokeWidth="4.5" fill="none" strokeLinecap="round" />
-      {/* 입 안쪽 (살짝) */}
-      <path d="M 30 60 Q 50 78 70 60 L 30 60 Z"
-        fill="#dc2626" opacity="0.4" />
-      {/* 광택 */}
-      <ellipse cx="36" cy="30" rx="6" ry="9" fill="white" opacity="0.35" />
-    </svg>
-  );
-}
-
-// ─── 우는 얼굴 (꽝) ───
-function SadFace({ size = 88 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: 'block' }}>
-      {/* 얼굴 */}
-      <circle cx="50" cy="50" r="45" fill="#cbd5e1"
-        stroke="#94a3b8" strokeWidth="2" />
-      {/* 찡그린 눈 (^^ 모양 거꾸로 — 슬픈 눈) */}
-      <path d="M 24 36 L 34 44 L 44 36"
-        stroke="#1e293b" strokeWidth="4" fill="none"
-        strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M 56 36 L 66 44 L 76 36"
-        stroke="#1e293b" strokeWidth="4" fill="none"
-        strokeLinecap="round" strokeLinejoin="round" />
-      {/* 눈물 줄기 */}
-      <path d="M 30 48 Q 28 60 26 72"
-        stroke="#3b82f6" strokeWidth="4" fill="none" strokeLinecap="round" />
-      <path d="M 70 48 Q 72 60 74 72"
-        stroke="#3b82f6" strokeWidth="4" fill="none" strokeLinecap="round" />
-      {/* 눈물 방울 (떨어지는) */}
-      <ellipse cx="26" cy="78" rx="3" ry="5" fill="#3b82f6" />
-      <ellipse cx="74" cy="78" rx="3" ry="5" fill="#3b82f6" />
-      {/* 찡그린 입 (역 미소) */}
-      <path d="M 32 72 Q 50 60 68 72"
-        stroke="#1e293b" strokeWidth="4.5" fill="none" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 // ─── 쪽지(종이접기 X자 모양) ───
 function PaperNote({ color, isDrawn, drawnIsWin }: {
   color: string;
@@ -678,39 +630,31 @@ function PaperNote({ color, isDrawn, drawnIsWin }: {
   drawnIsWin: boolean;
 }) {
   if (isDrawn) {
-    // 뽑힌 자리 — 결과에 따라 색상/얼굴 다름
+    // 뽑힌 자리 — 결과에 따라 이모지/라벨 다름
     return (
-      <svg width="46" height="60" viewBox="0 0 46 60" style={{ display: 'block' }}>
-        <rect x="5" y="5" width="36" height="36"
-          fill={drawnIsWin ? '#fef9c3' : '#e2e8f0'}
-          stroke={drawnIsWin ? '#fbbf24' : '#cbd5e1'}
-          strokeWidth="1.2"
-          strokeDasharray="3 2"
-          rx="2"
-        />
-        {/* 작은 얼굴 */}
-        {drawnIsWin ? (
-          <g transform="translate(13, 9) scale(0.2)">
-            <circle cx="50" cy="50" r="46" fill="#fbbf24" />
-            <circle cx="35" cy="42" r="5" fill="#1e293b" />
-            <circle cx="65" cy="42" r="5" fill="#1e293b" />
-            <path d="M 28 60 Q 50 80 72 60" stroke="#1e293b" strokeWidth="5" fill="none" strokeLinecap="round" />
-          </g>
-        ) : (
-          <g transform="translate(13, 9) scale(0.2)">
-            <circle cx="50" cy="50" r="46" fill="#94a3b8" />
-            <path d="M 25 38 L 35 45 L 45 38" stroke="#1e293b" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M 55 38 L 65 45 L 75 38" stroke="#1e293b" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M 35 72 Q 50 64 65 72" stroke="#1e293b" strokeWidth="5" fill="none" strokeLinecap="round" />
-          </g>
-        )}
-        <text x="23" y="50" textAnchor="middle"
-          fontSize="9" fontWeight="700"
-          fill={drawnIsWin ? '#ca8a04' : '#64748b'}
-          fontFamily="'Do Hyeon', sans-serif">
+      <div style={{
+        width: 46, height: 60,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        gap: 1,
+        background: drawnIsWin ? '#fef9c3' : '#e2e8f0',
+        border: drawnIsWin ? '1.2px dashed #fbbf24' : '1.2px dashed #cbd5e1',
+        borderRadius: 4,
+        margin: '5px 5px 19px',
+      }}>
+        <span style={{ fontSize: 22, lineHeight: 1 }}>
+          {drawnIsWin ? '😄' : '😭'}
+        </span>
+        <span style={{
+          fontSize: 9,
+          fontWeight: 700,
+          fontFamily: "'Do Hyeon', sans-serif",
+          color: drawnIsWin ? '#ca8a04' : '#64748b',
+          lineHeight: 1,
+        }}>
           {drawnIsWin ? '통과' : '꽝'}
-        </text>
-      </svg>
+        </span>
+      </div>
     );
   }
 
