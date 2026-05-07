@@ -76,7 +76,9 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   }, []);
 
   const handlePaperClick = (position: number) => {
-    if (drawn.includes(position) || phase !== 'idle') return;
+    if (drawn.includes(position)) return;
+    // 펼쳐지는 중(lifting/unfolding)에는 차단, idle/reveal 상태에선 허용
+    if (phase === 'lifting' || phase === 'unfolding') return;
 
     setDrawnPosition(position);
     setPhase('lifting');
@@ -297,14 +299,16 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                   key={position}
                   onClick={() => handlePaperClick(position)}
                   onMouseDown={(e) => e.stopPropagation()}
-                  disabled={isDrawn || phase !== 'idle'}
+                  disabled={isDrawn || phase === 'lifting' || phase === 'unfolding'}
                   style={{
                     width: PAPER_W,
                     height: PAPER_H,
                     background: 'transparent',
                     border: 'none',
                     padding: 0,
-                    cursor: isDrawn || phase !== 'idle' ? 'default' : 'pointer',
+                    cursor: isDrawn || phase === 'lifting' || phase === 'unfolding'
+                      ? 'default'
+                      : 'pointer',
                     transform: isLifting
                       ? `translateY(-60px) scale(0.55) rotate(${tilt * 4}deg)`
                       : `rotate(${tilt}deg)`,
@@ -314,13 +318,13 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                     filter: isDrawn ? 'none' : 'drop-shadow(0 4px 6px rgba(0,0,0,0.18))',
                   }}
                   onMouseEnter={(e) => {
-                    if (!isDrawn && phase === 'idle') {
+                    if (!isDrawn && (phase === 'idle' || phase === 'reveal')) {
                       e.currentTarget.style.transform = `translateY(-8px) rotate(${tilt}deg) scale(1.08)`;
                       e.currentTarget.style.filter = 'drop-shadow(0 10px 14px rgba(0,0,0,0.28))';
                     }
                   }}
                   onMouseLeave={(e) => {
-                    if (!isDrawn && phase === 'idle') {
+                    if (!isDrawn && (phase === 'idle' || phase === 'reveal')) {
                       e.currentTarget.style.transform = `rotate(${tilt}deg)`;
                       e.currentTarget.style.filter = 'drop-shadow(0 4px 6px rgba(0,0,0,0.18))';
                     }
