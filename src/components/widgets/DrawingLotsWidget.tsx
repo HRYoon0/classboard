@@ -84,7 +84,8 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
       timersRef.current.push(window.setTimeout(fn, ms));
 
     t(400, () => setPhase('unfolding'));
-    t(900, () => {
+    // 펼침 애니메이션: 4개 삼각형 + 바탕 종이 펼쳐지는 시간 약 0.9초
+    t(1300, () => {
       setPhase('reveal');
       setConfettiKey((k) => k + 1);
       onConfigChange({ ...config, drawn: [...drawn, position] });
@@ -306,39 +307,92 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
           </div>
         </div>
 
-        {/* 가운데 펼쳐진 종이 (unfolding/reveal) */}
+        {/* 펼쳐지는 종이 — 4개 삼각형이 각자 가장자리 기준 회전하며 펼침 */}
         {(phase === 'unfolding' || phase === 'reveal') && drawnPosition !== null && (
           <div style={{
             position: 'absolute',
-            left: '50%',
-            top: '50%',
-            marginLeft: -160,
-            marginTop: -65,
-            width: 320,
-            height: 130,
-            background: drawnPaperColor,
-            borderRadius: 14,
-            boxShadow: '0 18px 40px rgba(0,0,0,0.28)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transformOrigin: 'center center',
-            animation: phase === 'unfolding'
-              ? 'lotsPaperUnfold 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
-              : 'lotsPaperRevealPop 0.4s ease-out',
+            left: '50%', top: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 280, height: 280,
+            pointerEvents: 'none',
             zIndex: 5,
           }}>
-            <span style={{
-              fontFamily: "'Do Hyeon', sans-serif",
-              fontSize: 56,
-              fontWeight: 700,
-              color: '#1e293b',
-              textShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              opacity: phase === 'reveal' ? 1 : 0,
-              transform: phase === 'reveal' ? 'scale(1)' : 'scale(0.4)',
-              transition: 'opacity 0.35s 0.15s, transform 0.4s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              whiteSpace: 'nowrap',
-            }}>
-              {drawnNumber}번
-            </span>
+            <svg viewBox="-60 -60 220 220" width="100%" height="100%"
+              style={{ overflow: 'visible' }}>
+              {/* 펼친 후 드러나는 바탕 종이 */}
+              <rect x="-30" y="-30" width="160" height="160" rx="10"
+                fill={drawnPaperColor}
+                style={{
+                  animation: 'lotsBackingShow 0.5s 0.4s ease-out forwards',
+                  opacity: 0,
+                  transformOrigin: '50px 50px',
+                  transformBox: 'fill-box',
+                  filter: 'drop-shadow(0 12px 24px rgba(0,0,0,0.2))',
+                }}
+              />
+
+              {/* 4개의 접힌 삼각형 — 각자 외곽 가장자리에서 뒤집어 펼쳐짐 */}
+              <polygon points="0,0 100,0 50,50" fill={drawnPaperColor}
+                style={{
+                  transformOrigin: '50px 0',
+                  transformBox: 'fill-box',
+                  animation: 'lotsFlapV 0.55s ease-out forwards',
+                  filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.18))',
+                }}
+              />
+              <polygon points="100,0 100,100 50,50" fill={drawnPaperColor}
+                style={{
+                  transformOrigin: '100px 50px',
+                  transformBox: 'fill-box',
+                  animation: 'lotsFlapH 0.55s 0.08s ease-out forwards',
+                  filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.18))',
+                }}
+              />
+              <polygon points="0,100 100,100 50,50" fill={drawnPaperColor}
+                style={{
+                  transformOrigin: '50px 100px',
+                  transformBox: 'fill-box',
+                  animation: 'lotsFlapV 0.55s 0.16s ease-out forwards',
+                  filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.18))',
+                }}
+              />
+              <polygon points="0,0 0,100 50,50" fill={drawnPaperColor}
+                style={{
+                  transformOrigin: '0 50px',
+                  transformBox: 'fill-box',
+                  animation: 'lotsFlapH 0.55s 0.24s ease-out forwards',
+                  filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.18))',
+                }}
+              />
+
+              {/* X자 접힘선 — 펼쳐지면서 사라짐 */}
+              <line x1="0" y1="0" x2="100" y2="100"
+                stroke="white" strokeWidth="2.5" strokeLinecap="round"
+                style={{
+                  animation: 'lotsFoldLineFade 0.4s 0.1s ease-out forwards',
+                }}
+              />
+              <line x1="100" y1="0" x2="0" y2="100"
+                stroke="white" strokeWidth="2.5" strokeLinecap="round"
+                style={{
+                  animation: 'lotsFoldLineFade 0.4s 0.1s ease-out forwards',
+                }}
+              />
+
+              {/* 숫자 — 모든 삼각형 펼친 후 등장 */}
+              <text x="50" y="62" textAnchor="middle"
+                fontSize="40" fontWeight="700"
+                fill="#1e293b" fontFamily="'Do Hyeon', sans-serif"
+                style={{
+                  opacity: phase === 'reveal' ? 1 : 0,
+                  transformOrigin: '50px 50px',
+                  transformBox: 'fill-box',
+                  animation: phase === 'reveal' ? 'lotsNumberShow 0.5s ease-out' : 'none',
+                }}
+              >
+                {drawnNumber}번
+              </text>
+            </svg>
           </div>
         )}
 
@@ -467,27 +521,26 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
       </div>
 
       <style>{`
-        .lots-paper-shine {
-          mix-blend-mode: overlay;
+        @keyframes lotsFlapV {
+          0% { transform: scaleY(1); }
+          100% { transform: scaleY(-1); }
         }
-        @keyframes lotsPaperUnfold {
-          0% {
-            transform: scaleX(0.18) scaleY(0.95);
-            opacity: 0.7;
-          }
-          50% {
-            transform: scaleX(1.05) scaleY(1.02);
-            opacity: 1;
-          }
-          100% {
-            transform: scaleX(1) scaleY(1);
-            opacity: 1;
-          }
+        @keyframes lotsFlapH {
+          0% { transform: scaleX(1); }
+          100% { transform: scaleX(-1); }
         }
-        @keyframes lotsPaperRevealPop {
-          0% { transform: scale(0.96); }
-          50% { transform: scale(1.04); }
-          100% { transform: scale(1); }
+        @keyframes lotsFoldLineFade {
+          0% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        @keyframes lotsBackingShow {
+          0% { opacity: 0; transform: scale(0.7); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes lotsNumberShow {
+          0% { opacity: 0; transform: scale(0.4); }
+          60% { transform: scale(1.15); }
+          100% { opacity: 1; transform: scale(1); }
         }
         @keyframes lotsConfettiFly {
           0% {
