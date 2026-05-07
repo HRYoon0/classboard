@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 interface Props {
   config: Record<string, unknown>;
@@ -16,6 +16,11 @@ export default function RandomNameWidget({ config, onConfigChange }: Props) {
   const [confettiWave, setConfettiWave] = useState(0);
   const [spinColor, setSpinColor] = useState('#94a3b8');
   const timeoutChain = useRef<number[]>([]);
+
+  // 클라우드 로드로 이름 목록이 채워지면 결과 화면으로 자동 전환
+  useEffect(() => {
+    if (nameList) setShowInput(false);
+  }, [nameList]);
 
   const names = nameList
     .split('\n')

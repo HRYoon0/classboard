@@ -86,6 +86,21 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isRunning, nextPhase]);
 
+  // 클라우드 로드 등으로 시간 설정 변경 시 — 실행 중이 아니면 현재 페이즈 시간 갱신
+  useEffect(() => {
+    if (!isRunning) {
+      if (phase === 'focus') setTotalSeconds(focusMin * 60);
+      else if (phase === 'break') setTotalSeconds(breakMin * 60);
+      else setTotalSeconds(longBreakMin * 60);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusMin, breakMin, longBreakMin]);
+
+  // 클라우드 로드 등으로 누적 카운트 변경 시 동기화
+  useEffect(() => {
+    setCount(savedCount);
+  }, [savedCount]);
+
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   const phaseTotal = getPhaseSeconds(phase);

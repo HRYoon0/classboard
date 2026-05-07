@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Props {
   config: Record<string, unknown>;
@@ -21,6 +21,11 @@ export default function GroupMakerWidget({ config, onConfigChange }: Props) {
   const groupCount = (config.groupCount as number) || 4;
   const [groups, setGroups] = useState<string[][]>([]);
   const [showInput, setShowInput] = useState(!nameList);
+
+  // 클라우드 로드로 이름 목록이 채워지면 결과 화면으로 자동 전환
+  useEffect(() => {
+    if (nameList) setShowInput(false);
+  }, [nameList]);
 
   const names = nameList
     .split('\n')

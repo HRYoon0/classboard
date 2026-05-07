@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { IoEye, IoEyeOff, IoLockClosed, IoLockOpen, IoRefresh, IoCreate } from 'react-icons/io5';
 
 interface Props {
@@ -22,6 +22,11 @@ export default function PollWidget({ config, onConfigChange }: Props) {
   const [showSetup, setShowSetup] = useState(!question);
   const [showResults, setShowResults] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
+
+  // 클라우드 로드로 질문이 채워지면 결과 화면으로 자동 전환
+  useEffect(() => {
+    if (question) setShowSetup(false);
+  }, [question]);
 
   const totalVotes = votes.reduce((a, b) => a + b, 0);
   const maxVotes = Math.max(...votes, 1);
