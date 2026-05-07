@@ -27,7 +27,7 @@ function generateRungs(cols: number, rows: number): boolean[][] {
   return rungs;
 }
 
-// Fisher-Yates 셔플 — true=통과, false=꽝
+// Fisher-Yates 셔플 — true=당첨, false=꽝
 function generateResults(total: number, blanks: number): boolean[] {
   const arr: boolean[] = [];
   for (let i = 0; i < total - blanks; i++) arr.push(true);
@@ -254,7 +254,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
             </div>
           </div>
 
-          {/* 당첨(통과) 개수 */}
+          {/* 당첨 개수 */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
               당첨 개수 (1 ~ {editCount})
@@ -284,7 +284,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
           </div>
 
           <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-            <b style={{ color: '#ca8a04' }}>통과 {Math.max(0, Math.min(editCount, editWins))}개</b>
+            <b style={{ color: '#ca8a04' }}>당첨 {Math.max(0, Math.min(editCount, editWins))}개</b>
             {' / '}
             <b style={{ color: '#dc2626' }}>꽝 {previewBlanks}개</b>
           </p>
@@ -575,7 +575,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               {results[revealLane] ? '😄' : '😭'}
             </span>
             <span style={{ whiteSpace: 'nowrap' }}>
-              {results[revealLane] ? '통과!' : '꽝'}
+              {results[revealLane] ? '당첨!' : '꽝'}
             </span>
           </div>
         )}
