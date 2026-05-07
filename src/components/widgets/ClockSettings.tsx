@@ -10,6 +10,7 @@ const CLOCK_STYLES = [
   { id: 'cat', label: '🐱 고양이', desc: '꼬리가 흔들리는 시계' },
   { id: 'flower', label: '🌸 벚꽃', desc: '꽃잎이 흩날리는 시계' },
   { id: 'bear', label: '🐻 곰돌이', desc: '볼 터치 곰돌이 시계' },
+  { id: 'wave', label: '🌊 파도', desc: '여름 바다가 일렁이는 시계' },
 ];
 
 export default function ClockSettings({ config, onConfigChange }: Props) {

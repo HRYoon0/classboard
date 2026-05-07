@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useContainerScale } from '../../hooks/useContainerScale';
 
-type ClockStyle = 'classic' | 'minimal' | 'digital' | 'cat' | 'flower' | 'bear';
+type ClockStyle = 'classic' | 'minimal' | 'digital' | 'cat' | 'flower' | 'bear' | 'wave';
 
 interface Props {
   config: Record<string, unknown>;
@@ -39,6 +39,7 @@ export default function ClockWidget({ config }: Props) {
     cat: [220, 250],
     flower: [220, 250],
     bear: [220, 250],
+    wave: [220, 250],
   };
   const [baseW, baseH] = baseDims[clockStyle];
   const { containerRef, scale: containerScale } = useContainerScale(baseW, baseH);
@@ -47,6 +48,7 @@ export default function ClockWidget({ config }: Props) {
   if (clockStyle === 'cat') return <ScaleWrap ref={containerRef} scale={containerScale}><CatClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
   if (clockStyle === 'flower') return <ScaleWrap ref={containerRef} scale={containerScale}><FlowerClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
   if (clockStyle === 'bear') return <ScaleWrap ref={containerRef} scale={containerScale}><BearClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
+  if (clockStyle === 'wave') return <ScaleWrap ref={containerRef} scale={containerScale}><WaveClock hourAngle={hourAngle} minuteAngle={minuteAngle} secondAngle={secondAngle} digitalTime={digitalTime} ampm={ampm} /></ScaleWrap>;
 
   // classic / minimal 공통 아날로그 시계
   const size = 180;
@@ -466,6 +468,167 @@ function BearClock({ hourAngle, minuteAngle, secondAngle, digitalTime, ampm }: A
       <div style={{ fontSize: '16px', fontWeight: 700, color: '#6b4423', fontVariantNumeric: 'tabular-nums' }}>
         {ampm && <span style={{ marginRight: '4px' }}>{ampm}</span>}
         {digitalTime} 🐻
+      </div>
+    </div>
+  );
+}
+
+// 파도 시계 스타일 — 여름 바다 느낌
+function WaveClock({ hourAngle, minuteAngle, secondAngle, digitalTime, ampm }: AnalogProps) {
+  const size = 200;
+  const c = size / 2;
+  const r = 80;
+
+  // 한 파장(WAVE_LEN)을 정확히 옆으로 밀어내면 끊김 없이 이어진다
+  const WAVE_LEN = 80;
+
+  // 사인파 비슷한 path 생성: q ... t ... t ... 반복
+  // y_base = 파도 윗선의 기준 y, amp = 진폭. 아래쪽은 size+20까지 채워서 바다처럼 보이게.
+  const wavePath = (yBase: number, amp: number): string => {
+    const startX = -WAVE_LEN * 2;
+    const endX = size + WAVE_LEN * 2;
+    const half = WAVE_LEN / 2;
+    let d = `M ${startX} ${yBase}`;
+    let up = true;
+    for (let x = startX; x < endX; x += half) {
+      const dy = up ? -amp : amp;
+      d += ` q ${half / 2} ${dy} ${half} 0`;
+      up = !up;
+    }
+    d += ` L ${endX} ${size + 20} L ${startX} ${size + 20} Z`;
+    return d;
+  };
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: '100%', gap: '4px', position: 'relative', overflow: 'hidden',
+    }}>
+      <style>{`
+        @keyframes waveDriftL {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-${WAVE_LEN}px); }
+        }
+        @keyframes waveDriftR {
+          from { transform: translateX(-${WAVE_LEN}px); }
+          to   { transform: translateX(0); }
+        }
+        @keyframes bubbleRise {
+          0%   { transform: translateY(0) translateX(0); opacity: 0; }
+          15%  { opacity: 0.8; }
+          50%  { transform: translateY(-90px) translateX(6px); }
+          85%  { opacity: 0.6; }
+          100% { transform: translateY(-180px) translateX(-4px); opacity: 0; }
+        }
+        @keyframes sunGlow {
+          0%, 100% { opacity: 0.5; }
+          50%      { opacity: 0.8; }
+        }
+      `}</style>
+
+      {/* 올라가는 거품들 (꽃잎 떨어지기와 같은 패턴, 방향만 반대) */}
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          left: `${20 + i * 16}%`,
+          bottom: '20px',
+          width: `${6 + (i % 3) * 2}px`,
+          height: `${6 + (i % 3) * 2}px`,
+          borderRadius: '50%',
+          background: 'rgba(224, 242, 254, 0.85)',
+          border: '1.5px solid rgba(125, 211, 252, 0.7)',
+          opacity: 0,
+          animation: `bubbleRise ${3.5 + i * 0.7}s ease-in ${i * 0.9}s infinite`,
+          pointerEvents: 'none',
+        }} />
+      ))}
+
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <defs>
+          <clipPath id="wave-clip">
+            <circle cx={c} cy={c} r={r - 3} />
+          </clipPath>
+          <linearGradient id="wave-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fef9c3" />
+            <stop offset="40%" stopColor="#dbeafe" />
+            <stop offset="100%" stopColor="#bfdbfe" />
+          </linearGradient>
+        </defs>
+
+        {/* 외곽 링 — 짙은 네이비 (구명튜브 느낌) */}
+        <circle cx={c} cy={c} r={r} fill="#0c4a6e" />
+        <circle cx={c} cy={c} r={r - 2} fill="#bae6fd" />
+
+        {/* 시계 안쪽: 하늘 + 해 + 파도 */}
+        <g clipPath="url(#wave-clip)">
+          <rect x={0} y={0} width={size} height={size} fill="url(#wave-sky)" />
+
+          {/* 해 (오른쪽 위) */}
+          <circle cx={c + r - 26} cy={c - r + 28} r="16"
+            fill="#fde047" opacity="0.55"
+            style={{ animation: 'sunGlow 3s ease-in-out infinite' }} />
+          <circle cx={c + r - 26} cy={c - r + 28} r="10" fill="#facc15" />
+
+          {/* 파도 3겹 — 깊이감 위해 속도/색/투명도 차이 */}
+          <path d={wavePath(c + 24, 5)} fill="#7dd3fc" opacity="0.55"
+            style={{ animation: 'waveDriftL 7s linear infinite', transformOrigin: '0 0' }} />
+          <path d={wavePath(c + 38, 7)} fill="#38bdf8" opacity="0.7"
+            style={{ animation: 'waveDriftR 5s linear infinite', transformOrigin: '0 0' }} />
+          <path d={wavePath(c + 52, 9)} fill="#0284c7" opacity="0.85"
+            style={{ animation: 'waveDriftL 4s linear infinite', transformOrigin: '0 0' }} />
+        </g>
+
+        {/* 외곽 링 윤곽선 (clip 위에 한 번 더) */}
+        <circle cx={c} cy={c} r={r} fill="none" stroke="#0c4a6e" strokeWidth="3" />
+
+        {/* 12, 3, 6, 9 숫자 — 흰 외곽선으로 가독성 */}
+        {[
+          { n: '12', x: c, y: c - r + 18 },
+          { n: '3', x: c + r - 18, y: c },
+          { n: '6', x: c, y: c + r - 14 },
+          { n: '9', x: c - r + 16, y: c },
+        ].map(({ n, x, y }) => (
+          <text key={n} x={x} y={y} textAnchor="middle" dominantBaseline="central"
+            fill="#0c4a6e" fontSize="13" fontWeight="700"
+            stroke="white" strokeWidth="2.5" paintOrder="stroke"
+            style={{ pointerEvents: 'none' }}>{n}</text>
+        ))}
+
+        {/* 분 눈금 (점) — 12,3,6,9 제외 */}
+        {Array.from({ length: 12 }).map((_, i) => {
+          if (i % 3 === 0) return null;
+          const angle = (i * 30 - 90) * (Math.PI / 180);
+          const dr = r - 12;
+          return (
+            <circle key={i} cx={c + dr * Math.cos(angle)} cy={c + dr * Math.sin(angle)}
+              r="2" fill="#0c4a6e" opacity="0.55" />
+          );
+        })}
+
+        {/* 시침 */}
+        <line x1={c} y1={c}
+          x2={c + 32 * Math.sin(hourAngle * Math.PI / 180)}
+          y2={c - 32 * Math.cos(hourAngle * Math.PI / 180)}
+          stroke="#0c4a6e" strokeWidth="3.8" strokeLinecap="round" />
+        {/* 분침 */}
+        <line x1={c} y1={c}
+          x2={c + 48 * Math.sin(minuteAngle * Math.PI / 180)}
+          y2={c - 48 * Math.cos(minuteAngle * Math.PI / 180)}
+          stroke="#075985" strokeWidth="2.6" strokeLinecap="round" />
+        {/* 초침 — 산호색 */}
+        <line x1={c} y1={c}
+          x2={c + 54 * Math.sin(secondAngle * Math.PI / 180)}
+          y2={c - 54 * Math.cos(secondAngle * Math.PI / 180)}
+          stroke="#fb7185" strokeWidth="1.4" strokeLinecap="round" />
+
+        {/* 중심 — 작은 구명튜브 느낌 */}
+        <circle cx={c} cy={c} r="5" fill="white" stroke="#0c4a6e" strokeWidth="1.5" />
+        <circle cx={c} cy={c} r="2" fill="#fb7185" />
+      </svg>
+
+      <div style={{ fontSize: '16px', fontWeight: 700, color: '#075985', fontVariantNumeric: 'tabular-nums' }}>
+        {ampm && <span style={{ marginRight: '4px', color: '#0ea5e9' }}>{ampm}</span>}
+        {digitalTime} 🌊
       </div>
     </div>
   );
