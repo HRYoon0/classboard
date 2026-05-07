@@ -778,12 +778,10 @@ function SnowClock({ hourAngle, minuteAngle, secondAngle, digitalTime, ampm }: A
     }}>
       <style>{`
         @keyframes snowFall {
-          0%   { transform: translateY(-20px) translateX(0)   rotate(0deg);   opacity: 0; }
+          0%   { transform: translateY(-20px); opacity: 0; }
           10%  { opacity: 0.95; }
-          30%  { transform: translateY(70px)  translateX(8px) rotate(45deg); }
-          60%  { transform: translateY(140px) translateX(-8px) rotate(135deg); }
           90%  { opacity: 0.65; }
-          100% { transform: translateY(240px) translateX(0)   rotate(270deg); opacity: 0; }
+          100% { transform: translateY(240px); opacity: 0; }
         }
       `}</style>
 
@@ -799,7 +797,7 @@ function SnowClock({ hourAngle, minuteAngle, secondAngle, digitalTime, ampm }: A
           background: s.type === 'dust' ? 'white' : 'transparent',
           fontSize: s.type === 'flake' ? `${s.size}px` : 0,
           opacity: 0,
-          animation: `snowFall ${s.dur}s ease-in ${s.delay}s infinite`,
+          animation: `snowFall ${s.dur}s linear ${s.delay}s infinite`,
           pointerEvents: 'none',
           zIndex: 1,
           lineHeight: 1,
