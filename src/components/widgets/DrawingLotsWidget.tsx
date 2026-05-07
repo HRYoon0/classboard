@@ -76,10 +76,21 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   }, []);
 
   const handlePaperClick = (position: number) => {
-    if (drawn.includes(position)) return;
-    // 펼쳐지는 중(lifting/unfolding)에는 차단, idle/reveal 상태에선 허용
+    // 펼쳐지는 중(lifting/unfolding)에는 차단
     if (phase === 'lifting' || phase === 'unfolding') return;
 
+    // 이미 뽑힌 종이를 누르면: 리빌 닫고 idle로 (다음 뽑기 준비)
+    if (drawn.includes(position)) {
+      if (phase === 'reveal') {
+        timersRef.current.forEach(clearTimeout);
+        timersRef.current = [];
+        setDrawnPosition(null);
+        setPhase('idle');
+      }
+      return;
+    }
+
+    // 새 종이 뽑기
     setDrawnPosition(position);
     setPhase('lifting');
 
@@ -299,16 +310,21 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
                   key={position}
                   onClick={() => handlePaperClick(position)}
                   onMouseDown={(e) => e.stopPropagation()}
-                  disabled={isDrawn || phase === 'lifting' || phase === 'unfolding'}
+                  disabled={
+                    phase === 'lifting' || phase === 'unfolding' ||
+                    (isDrawn && phase === 'idle')
+                  }
                   style={{
                     width: PAPER_W,
                     height: PAPER_H,
                     background: 'transparent',
                     border: 'none',
                     padding: 0,
-                    cursor: isDrawn || phase === 'lifting' || phase === 'unfolding'
-                      ? 'default'
-                      : 'pointer',
+                    cursor:
+                      phase === 'lifting' || phase === 'unfolding' ||
+                      (isDrawn && phase === 'idle')
+                        ? 'default'
+                        : 'pointer',
                     transform: isLifting
                       ? `translateY(-60px) scale(0.55) rotate(${tilt * 4}deg)`
                       : `rotate(${tilt}deg)`,
