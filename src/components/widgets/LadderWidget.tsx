@@ -69,20 +69,20 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const [revealLane, setRevealLane] = useState<number | null>(null);
   const timersRef = useRef<number[]>([]);
 
-  // 레이아웃 계산 — 가로 우선 비율로 위젯 너비를 효율적으로 사용
+  // 레이아웃 계산 — 가로 우선 비율 + 사다리 길게 + 큰 폰트
   const COLS = Math.max(2, Math.min(8, count));
-  const ROWS = Math.max(6, COLS + 2);
-  const LANE_W = COLS <= 4 ? 90 : 75;
-  const ROW_H = 36;
-  const PADDING_X = 36;
-  const PADDING_TOP = 56;
-  const PADDING_BOTTOM = 70;
+  const ROWS = Math.max(10, COLS + 5); // 사다리 더 길게
+  const LANE_W = COLS <= 4 ? 95 : 80;
+  const ROW_H = 42;
+  const PADDING_X = 40;
+  const PADDING_TOP = 70;
+  const PADDING_BOTTOM = 80;
   const ladderW = (COLS - 1) * LANE_W + PADDING_X * 2;
   const ladderH = ROWS * ROW_H + PADDING_TOP + PADDING_BOTTOM;
 
-  const innerW = showInput ? 380 : Math.max(420, ladderW + 20);
-  // ladderH 위에 헤더(70) + 아래에 안내 문구(20) + 버튼(50) + 마진(20) = 160 여유
-  const innerH = showInput ? 380 : 70 + ladderH + 90;
+  const innerW = showInput ? 380 : Math.max(440, ladderW + 20);
+  // 헤더(80) + 사다리 + 안내 문구(28) + 버튼(50) + 마진(22) ≈ 180 여유
+  const innerH = showInput ? 380 : 80 + ladderH + 110;
 
   const { containerRef, scale } = useContainerScale(innerW, innerH);
 
@@ -190,7 +190,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const handleSubmit = () => {
     const validCount = Math.max(2, Math.min(8, editCount));
     const validBlanks = Math.max(0, Math.min(validCount - 1, editBlanks));
-    const newRows = Math.max(6, validCount + 2);
+    const newRows = Math.max(10, validCount + 5);
     onConfigChange({
       ...config,
       count: validCount,
@@ -331,8 +331,8 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
       }}>
         {/* 제목 */}
         <div style={{
-          position: 'absolute', top: 6, left: 0, right: 0, textAlign: 'center',
-          fontSize: 22, fontWeight: 700, color: '#0ea5e9',
+          position: 'absolute', top: 4, left: 0, right: 0, textAlign: 'center',
+          fontSize: 28, fontWeight: 700, color: '#0ea5e9',
           fontFamily: "'Do Hyeon', sans-serif",
         }}>
           🪜 사다리 타기
@@ -340,8 +340,8 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
 
         {/* 통계 */}
         <div style={{
-          position: 'absolute', top: 38, left: 0, right: 0, textAlign: 'center',
-          fontSize: 13, color: '#64748b',
+          position: 'absolute', top: 44, left: 0, right: 0, textAlign: 'center',
+          fontSize: 16, color: '#64748b',
         }}>
           남은 사람: <b style={{ color: '#0ea5e9' }}>{remainingCount}</b> / {count}
           {' · '}
@@ -383,11 +383,11 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               <line
                 key={`col-${c}`}
                 x1={xOf(c)}
-                y1={yOf(0) - 32}
+                y1={yOf(0) - 40}
                 x2={xOf(c)}
-                y2={yOf(ROWS) + 24}
+                y2={yOf(ROWS) + 32}
                 stroke="#cbd5e1"
-                strokeWidth="3"
+                strokeWidth="4"
                 strokeLinecap="round"
               />
             ))}
@@ -440,10 +440,10 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                 points={traveledPoints.map((p) => `${p.x},${p.y}`).join(' ')}
                 fill="none"
                 stroke={riderColor}
-                strokeWidth="5"
+                strokeWidth="6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                opacity="0.85"
+                opacity="0.9"
               />
             )}
 
@@ -456,15 +456,15 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                 <g key={`top-${c}`}>
                   <circle
                     cx={xOf(c)}
-                    cy={yOf(0) - 32}
-                    r="14"
+                    cy={yOf(0) - 40}
+                    r="20"
                     fill={isCompleted ? '#e2e8f0' : color}
                     stroke={isCurrent ? color : 'rgba(0,0,0,0.1)'}
-                    strokeWidth={isCurrent ? '3' : '1'}
+                    strokeWidth={isCurrent ? '3.5' : '1.2'}
                     style={{
                       cursor: !isCompleted && phase === 'idle' ? 'pointer' : 'default',
                       filter: !isCompleted && phase === 'idle'
-                        ? 'drop-shadow(0 3px 6px rgba(0,0,0,0.18))'
+                        ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.22))'
                         : 'none',
                       transition: 'all 0.2s',
                     }}
@@ -472,9 +472,9 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                   />
                   <text
                     x={xOf(c)}
-                    y={yOf(0) - 28}
+                    y={yOf(0) - 33}
                     textAnchor="middle"
-                    fontSize="13"
+                    fontSize="18"
                     fontWeight="700"
                     fontFamily="'Do Hyeon', sans-serif"
                     fill={isCompleted ? '#94a3b8' : '#1e293b'}
@@ -491,23 +491,23 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               <g key={`bot-${c}`}>
                 <circle
                   cx={xOf(c)}
-                  cy={yOf(ROWS) + 24}
-                  r="18"
+                  cy={yOf(ROWS) + 32}
+                  r="24"
                   fill={isWin ? '#fef3c7' : '#475569'}
                   stroke={isWin ? '#fbbf24' : '#334155'}
-                  strokeWidth="1.5"
+                  strokeWidth="1.8"
                   style={{
                     filter: revealLane === c
-                      ? `drop-shadow(0 4px 12px ${isWin ? 'rgba(251,191,36,0.7)' : 'rgba(0,0,0,0.4)'})`
+                      ? `drop-shadow(0 4px 14px ${isWin ? 'rgba(251,191,36,0.7)' : 'rgba(0,0,0,0.4)'})`
                       : 'none',
                     transition: 'filter 0.3s',
                   }}
                 />
                 <text
                   x={xOf(c)}
-                  y={yOf(ROWS) + 32}
+                  y={yOf(ROWS) + 42}
                   textAnchor="middle"
-                  fontSize="22"
+                  fontSize="30"
                   style={{ pointerEvents: 'none', userSelect: 'none' }}
                 >
                   {isWin ? '😄' : '😭'}
@@ -520,12 +520,12 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               <circle
                 cx={currentPoint.x}
                 cy={currentPoint.y}
-                r="9"
+                r="12"
                 fill={riderColor}
                 stroke="white"
-                strokeWidth="2.5"
+                strokeWidth="3"
                 style={{
-                  filter: `drop-shadow(0 3px 6px ${riderColor})`,
+                  filter: `drop-shadow(0 4px 8px ${riderColor})`,
                   transition: 'cx 0.18s linear, cy 0.18s linear',
                 }}
               />
@@ -543,25 +543,25 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              padding: '14px 26px',
+              padding: '18px 32px',
               background: results[revealLane] ? '#fef3c7' : '#475569',
               color: results[revealLane] ? '#92400e' : '#fff',
-              borderRadius: 14,
+              borderRadius: 16,
               fontFamily: "'Do Hyeon', sans-serif",
-              fontSize: 20,
+              fontSize: 28,
               fontWeight: 700,
               boxShadow: results[revealLane]
-                ? '0 12px 28px rgba(0,0,0,0.25), 0 0 24px rgba(251,191,36,0.5)'
-                : '0 12px 28px rgba(0,0,0,0.3)',
+                ? '0 14px 32px rgba(0,0,0,0.25), 0 0 28px rgba(251,191,36,0.55)'
+                : '0 14px 32px rgba(0,0,0,0.3)',
               animation: 'ladderResultPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
               cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 10,
+              display: 'flex', alignItems: 'center', gap: 14,
               zIndex: 10,
-              border: `2px solid ${results[revealLane] ? '#fbbf24' : '#1e293b'}`,
+              border: `2.5px solid ${results[revealLane] ? '#fbbf24' : '#1e293b'}`,
             }}
           >
             <span>{riderCol + 1}번 →</span>
-            <span style={{ fontSize: 32 }}>
+            <span style={{ fontSize: 44 }}>
               {results[revealLane] ? '😄' : '😭'}
             </span>
             <span>{results[revealLane] ? '통과!' : '꽝'}</span>
@@ -575,14 +575,14 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            padding: '12px 26px',
+            padding: '16px 32px',
             background: '#0ea5e9',
             color: 'white',
-            borderRadius: 14,
+            borderRadius: 16,
             fontFamily: "'Do Hyeon', sans-serif",
-            fontSize: 18,
+            fontSize: 24,
             fontWeight: 700,
-            boxShadow: '0 12px 28px rgba(14,165,233,0.4)',
+            boxShadow: '0 14px 32px rgba(14,165,233,0.4)',
             zIndex: 10,
           }}>
             ✨ 모두 완료!
@@ -593,8 +593,8 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
         {phase === 'idle' && !allDone && (
           <div style={{
             position: 'absolute',
-            bottom: 60, left: 0, right: 0, textAlign: 'center',
-            fontSize: 13, color: '#94a3b8',
+            bottom: 75, left: 0, right: 0, textAlign: 'center',
+            fontSize: 15, color: '#94a3b8',
           }}>
             위쪽 색깔 도트를 클릭하면 사다리를 타고 내려갑니다
           </div>
