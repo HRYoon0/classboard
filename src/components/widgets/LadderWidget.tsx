@@ -105,33 +105,33 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const timersRef = useRef<number[]>([]);
   const pointsRef = useRef<{ x: number; y: number }[]>([]);
 
-  // 레이아웃 — 위/아래 박스가 있으니 LANE_W를 충분히 넓게
+  // 레이아웃 — 학생 가시성 위해 박스/도트/폰트 크게
   const COLS = Math.max(2, Math.min(12, count));
   const LANE_W =
-    COLS <= 4 ? 150 :
-    COLS <= 6 ? 130 :
-    COLS <= 8 ? 110 :
-    COLS <= 10 ? 92 :
-    78;
-  const ROW_H = COLS <= 8 ? 30 : 25;
+    COLS <= 4 ? 180 :
+    COLS <= 6 ? 160 :
+    COLS <= 8 ? 134 :
+    COLS <= 10 ? 112 :
+    96;
+  const ROW_H = COLS <= 8 ? 32 : 27;
   const ROWS = Math.max(14, Math.floor(COLS * 1.8));
-  const PADDING_X = 50;
-  const PADDING_TOP = 24;
-  const PADDING_BOTTOM = 24;
+  const PADDING_X = 56;
+  const PADDING_TOP = 26;
+  const PADDING_BOTTOM = 26;
   const ladderW = (COLS - 1) * LANE_W + PADDING_X * 2;
   const ladderH = ROWS * ROW_H + PADDING_TOP + PADDING_BOTTOM;
 
-  const BOX_W = LANE_W - 14;
-  const BOX_H = 56;
-  const DOT_R = 22;
-  const DOT_GAP = 14; // 도트와 박스 사이 간격
+  const BOX_W = LANE_W - 16;
+  const BOX_H = 66;
+  const DOT_R = 26;
+  const DOT_GAP = 16; // 도트와 박스 사이 간격
 
-  // 헤더(72: 제목+설명) + 도트 + 위박스 + 사다리 + 아래박스 + 안내(28) + 버튼(46) + 마진(12)
-  const HEADER_H = 72;
-  const FOOTER_H = 28 + 46 + 12; // 안내 + 버튼 + 마진
-  const innerW = showInput ? 420 : Math.max(520, ladderW + 40);
+  // 헤더(90: 제목+설명) + 도트 + 위박스 + 사다리 + 아래박스 + 안내(30) + 버튼(46) + 마진(12)
+  const HEADER_H = 90;
+  const FOOTER_H = 30 + 46 + 14; // 안내 + 버튼 + 마진
+  const innerW = showInput ? 480 : Math.max(540, ladderW + 40);
   const innerH = showInput
-    ? 420
+    ? 500
     : HEADER_H + (DOT_R * 2 + DOT_GAP) + (BOX_H + 10) + ladderH + (BOX_H + 10) + FOOTER_H;
 
   const { containerRef, scale } = useContainerScale(innerW, innerH);
@@ -264,15 +264,15 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
         <div style={{
           transform: `scale(${scale})`,
           transformOrigin: 'center center',
-          width: 420,
-          height: 420,
-          padding: '24px 28px',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
-          fontFamily: "'Do Hyeon', sans-serif",
+          width: 480,
+          height: 500,
+          padding: '28px 32px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+          fontFamily: "'Gaegu', sans-serif",
           position: 'relative',
         }}>
           <p style={{
-            fontSize: 50, color: '#1e293b', margin: '12px 0 0 0',
+            fontSize: 60, color: '#1e293b', margin: '12px 0 0 0',
             letterSpacing: '-1px',
             textShadow: '3px 3px 0 rgba(14,165,233,0.18)',
             fontFamily: "'Gaegu', sans-serif",
@@ -280,26 +280,26 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
           }}>
             🪜 사다리게임!
           </p>
-          <p style={{ fontSize: 18, color: '#94a3b8', margin: 0, fontFamily: "'Gaegu', sans-serif" }}>
+          <p style={{ fontSize: 22, color: '#94a3b8', margin: 0, fontFamily: "'Gaegu', sans-serif" }}>
             인원수를 정하고 시작해보세요
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: 12 }}>
-            <p style={{ fontSize: 17, color: '#64748b', margin: 0, fontFamily: "'Gaegu', sans-serif" }}>참가 인원 (2~12명)</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginTop: 14 }}>
+            <p style={{ fontSize: 20, color: '#64748b', margin: 0, fontFamily: "'Gaegu', sans-serif" }}>참가 인원 (2~12명)</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
               <button
                 onClick={() => setEditCount((c) => Math.max(2, c - 1))}
                 onMouseDown={(e) => e.stopPropagation()}
                 style={countBtnStyle}
               >−</button>
               <div style={{
-                width: 90, height: 90, borderRadius: '50%',
+                width: 110, height: 110, borderRadius: '50%',
                 background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                border: '3px solid #fbbf24',
+                border: '4px solid #fbbf24',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 48, fontWeight: 700, color: '#92400e',
-                boxShadow: '0 6px 16px rgba(251,191,36,0.35)',
-                fontFamily: "'Do Hyeon', sans-serif",
+                fontSize: 60, fontWeight: 700, color: '#92400e',
+                boxShadow: '0 6px 18px rgba(251,191,36,0.4)',
+                fontFamily: "'Gaegu', sans-serif",
               }}>
                 {editCount}
               </div>
@@ -316,17 +316,17 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
             disabled={!isValid}
             onMouseDown={(e) => e.stopPropagation()}
             style={{
-              padding: '14px 56px',
+              padding: '16px 64px',
               background: !isValid ? '#cbd5e1' : 'linear-gradient(135deg, #0ea5e9, #6366f1)',
               color: 'white',
               border: 'none',
               borderRadius: 14,
-              fontSize: 22,
+              fontSize: 26,
               fontWeight: 700,
-              fontFamily: "'Do Hyeon', sans-serif",
+              fontFamily: "'Gaegu', sans-serif",
               cursor: !isValid ? 'default' : 'pointer',
               boxShadow: isValid ? '0 8px 20px rgba(14,165,233,0.4)' : 'none',
-              marginTop: 12,
+              marginTop: 14,
               letterSpacing: '2px',
             }}
           >
@@ -364,8 +364,8 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
       }}>
         {/* 제목 */}
         <div style={{
-          position: 'absolute', top: 6, left: 0, right: 0, textAlign: 'center',
-          fontSize: 38, fontWeight: 700, color: '#1e293b',
+          position: 'absolute', top: 4, left: 0, right: 0, textAlign: 'center',
+          fontSize: 46, fontWeight: 700, color: '#1e293b',
           letterSpacing: '-0.5px',
           textShadow: '3px 3px 0 rgba(14,165,233,0.15)',
           fontFamily: "'Gaegu', sans-serif",
@@ -376,8 +376,8 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
 
         {/* 통계 */}
         <div style={{
-          position: 'absolute', top: 48, left: 0, right: 0, textAlign: 'center',
-          fontSize: 17, color: '#64748b',
+          position: 'absolute', top: 56, left: 0, right: 0, textAlign: 'center',
+          fontSize: 22, color: '#64748b',
           fontFamily: "'Gaegu', sans-serif",
         }}>
           남은 사람 <b style={{ color: '#0ea5e9' }}>{remainingCount}</b> / {count}
@@ -413,10 +413,10 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                   border: isCurrent ? `3px solid ${color}` : '2px solid rgba(0,0,0,0.1)',
                   boxShadow: !isCompleted && phase === 'idle' ? '0 4px 10px rgba(0,0,0,0.2)' : 'none',
                   cursor: !isCompleted && phase === 'idle' ? 'pointer' : 'default',
-                  fontSize: 20,
+                  fontSize: 24,
                   fontWeight: 700,
                   color: isCompleted ? '#94a3b8' : '#1e293b',
-                  fontFamily: "'Do Hyeon', sans-serif",
+                  fontFamily: "'Gaegu', sans-serif",
                   transition: 'all 0.2s',
                   padding: 0,
                 }}
@@ -455,7 +455,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                 borderRadius: 8,
                 background: '#fffef9',
                 fontFamily: "'Gaegu', sans-serif",
-                fontSize: 18,
+                fontSize: 24,
                 fontWeight: 700,
                 color: '#1e293b',
                 textAlign: 'center',
@@ -643,11 +643,11 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                padding: '22px 36px',
+                padding: '26px 44px',
                 background: '#fef3c7',
                 color: '#92400e',
-                borderRadius: 18,
-                fontSize: 32,
+                borderRadius: 20,
+                fontSize: 40,
                 fontWeight: 700,
                 boxShadow: '0 16px 36px rgba(0,0,0,0.25), 0 0 32px rgba(251,191,36,0.55)',
                 animation: 'ladderResultPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -662,7 +662,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               }}
             >
               <span style={{ whiteSpace: 'nowrap' }}>{msg.top}</span>
-              <span style={{ fontSize: 36, color: '#0ea5e9' }}>→</span>
+              <span style={{ fontSize: 44, color: '#0ea5e9' }}>→</span>
               <span style={{ whiteSpace: 'nowrap' }}>{msg.bottom}</span>
             </div>
           );
@@ -694,7 +694,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
           <div style={{
             position: 'absolute',
             bottom: 58, left: 0, right: 0, textAlign: 'center',
-            fontSize: 15, color: '#94a3b8',
+            fontSize: 18, color: '#94a3b8',
             fontFamily: "'Gaegu', sans-serif",
           }}>
             위/아래 칸을 채우고 색깔 도트를 눌러 시작해요
@@ -747,11 +747,11 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
 }
 
 const countBtnStyle: React.CSSProperties = {
-  width: 54, height: 54, borderRadius: '50%',
+  width: 64, height: 64, borderRadius: '50%',
   border: 'none', background: '#f1f5f9', color: '#475569',
-  fontSize: 30, fontWeight: 700, cursor: 'pointer',
+  fontSize: 36, fontWeight: 700, cursor: 'pointer',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  fontFamily: "'Do Hyeon', sans-serif",
+  fontFamily: "'Gaegu', sans-serif",
 };
 
 const smallBtnStyle: React.CSSProperties = {
