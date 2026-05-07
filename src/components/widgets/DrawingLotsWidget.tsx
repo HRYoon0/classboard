@@ -16,28 +16,29 @@ const PAPER_COLORS = [
 ];
 
 export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
-  const nameList = ((config.names as string) || '').trim();
+  const count = (config.count as number) || 0;
   const drawn: number[] = (config.drawn as number[]) || [];
-  const [showInput, setShowInput] = useState(!nameList);
-  const [editText, setEditText] = useState(nameList);
+  const [showInput, setShowInput] = useState(!count);
+  const [editCount, setEditCount] = useState(count || 25);
   const [drawnIdx, setDrawnIdx] = useState<number | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [confettiKey, setConfettiKey] = useState(0);
   const timersRef = useRef<number[]>([]);
   const { containerRef, scale } = useContainerScale(420, 460);
 
-  const names = nameList.split('\n').map((n) => n.trim()).filter(Boolean);
+  // 이름 배열을 인원수에서 동적 생성 ("1번", "2번", ...)
+  const names = Array.from({ length: count }, (_, i) => `${i + 1}번`);
   const remaining = names.map((_, i) => i).filter((i) => !drawn.includes(i));
 
-  // 클라우드 로드로 이름 목록이 채워지면 결과 화면으로 자동 전환
+  // 클라우드 로드로 인원수가 설정되면 결과 화면으로 자동 전환
   useEffect(() => {
-    if (nameList) setShowInput(false);
-  }, [nameList]);
+    if (count) setShowInput(false);
+  }, [count]);
 
-  // 이름 목록이 외부에서 바뀌면 편집 텍스트 동기화
+  // 인원수가 외부에서 바뀌면 편집값 동기화
   useEffect(() => {
-    setEditText(nameList);
-  }, [nameList]);
+    if (count) setEditCount(count);
+  }, [count]);
 
   useEffect(() => {
     return () => timersRef.current.forEach(clearTimeout);
@@ -80,7 +81,8 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
   };
 
   const handleSubmit = () => {
-    onConfigChange({ ...config, names: editText, drawn: [] });
+    const validCount = Math.max(2, Math.min(99, editCount));
+    onConfigChange({ ...config, count: validCount, drawn: [] });
     setShowInput(false);
     setDrawnIdx(null);
     setPhase('idle');
@@ -94,6 +96,7 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
 
   // ─── 입력 화면 ───
   if (showInput) {
+    const isValid = editCount >= 2 && editCount <= 99;
     return (
       <div ref={containerRef} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -103,49 +106,95 @@ export default function DrawingLotsWidget({ config, onConfigChange }: Props) {
           transform: `scale(${scale})`,
           transformOrigin: 'center center',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          gap: 12, width: 380,
+          gap: 18, width: 380,
         }}>
           <p style={{
             fontFamily: "'Do Hyeon', sans-serif",
-            fontSize: 24, color: '#7c3aed', margin: 0,
+            fontSize: 26, color: '#7c3aed', margin: 0,
           }}>🎫 제비뽑기</p>
-          <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-            한 줄에 한 명씩 입력하세요
+          <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
+            인원수를 입력하세요 (2 ~ 99)
           </p>
-          <textarea
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            onMouseDown={(e) => e.stopPropagation()}
-            placeholder="홍길동&#10;김철수&#10;이영희"
-            style={{
-              width: '100%', height: 220,
-              padding: 12,
-              border: '2px solid #e2e8f0',
-              borderRadius: 10,
-              fontSize: 15,
-              fontFamily: "'Do Hyeon', sans-serif",
-              resize: 'none',
-              outline: 'none',
-              color: '#334155',
-              boxSizing: 'border-box',
-            }}
-          />
+
+          {/* 인원수 조절 (- / 숫자 / +) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <button
+              onClick={() => setEditCount((c) => Math.max(2, c - 1))}
+              onMouseDown={(e) => e.stopPropagation()}
+              style={{
+                width: 56, height: 56, borderRadius: '50%',
+                border: 'none',
+                background: '#f1f5f9',
+                color: '#475569',
+                fontSize: 28, fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
+            >
+              −
+            </button>
+            <input
+              type="number"
+              min={2}
+              max={99}
+              value={editCount}
+              onChange={(e) => setEditCount(Number(e.target.value) || 0)}
+              onMouseDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === 'Enter' && isValid) handleSubmit(); }}
+              style={{
+                width: 120, padding: '14px 8px',
+                border: '2px solid #e2e8f0',
+                borderRadius: 12,
+                fontSize: 44, fontWeight: 700, textAlign: 'center',
+                fontFamily: "'Do Hyeon', sans-serif",
+                color: '#7c3aed',
+                outline: 'none',
+              }}
+            />
+            <button
+              onClick={() => setEditCount((c) => Math.min(99, c + 1))}
+              onMouseDown={(e) => e.stopPropagation()}
+              style={{
+                width: 56, height: 56, borderRadius: '50%',
+                border: 'none',
+                background: '#f1f5f9',
+                color: '#475569',
+                fontSize: 28, fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
+            >
+              +
+            </button>
+          </div>
+
+          <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
+            <b style={{ color: '#7c3aed', fontFamily: "'Do Hyeon', sans-serif" }}>
+              1번 ~ {Math.max(2, Math.min(99, editCount))}번
+            </b>{' '}
+            중에서 무작위로 뽑아요
+          </p>
+
           <button
             onClick={handleSubmit}
-            disabled={!editText.trim()}
+            disabled={!isValid}
             style={{
-              padding: '12px 36px',
-              background: !editText.trim()
+              padding: '12px 38px',
+              background: !isValid
                 ? '#cbd5e1'
                 : 'linear-gradient(135deg, #8b5cf6, #6366f1)',
               color: 'white',
               border: 'none',
-              borderRadius: 10,
-              fontSize: 17,
+              borderRadius: 12,
+              fontSize: 18,
               fontWeight: 700,
               fontFamily: "'Do Hyeon', sans-serif",
-              cursor: !editText.trim() ? 'default' : 'pointer',
-              boxShadow: editText.trim() ? '0 4px 12px rgba(139,92,246,0.4)' : 'none',
+              cursor: !isValid ? 'default' : 'pointer',
+              boxShadow: isValid ? '0 6px 16px rgba(139,92,246,0.4)' : 'none',
             }}
           >
             시작하기
