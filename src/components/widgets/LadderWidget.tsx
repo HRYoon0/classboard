@@ -12,17 +12,24 @@ const LANE_COLORS = [
   '#a78bfa', '#60a5fa', '#34d399', '#fde047',
 ];
 
-// 가로대(rungs) 무작위 생성 — 엄격한 짝/홀 교대 패턴
-// 매 행마다 짝수/홀수 위치를 정확히 번갈아 사용 → 모든 라인이 자주 좌우 이동
+// 가로대(rungs) 무작위 생성 — 자연스러운 zigzag를 위한 무작위 배치
+// 인접 가로대 금지(경로 모호성 방지) + 높은 밀도(직진 구간 최소화)
 function generateRungs(cols: number, rows: number): boolean[][] {
   const rungs: boolean[][] = [];
-  const startEven = Math.random() < 0.5; // 시작 패리티 무작위
   for (let r = 0; r < rows; r++) {
     const row: boolean[] = new Array(Math.max(0, cols - 1)).fill(false);
-    const useEven = startEven ? r % 2 === 0 : r % 2 === 1;
-    // 선택된 위치들에 0.85 확률로 가로대 (높은 밀도로 직진 구간 최소화)
-    for (let c = useEven ? 0 : 1; c < cols - 1; c += 2) {
-      if (Math.random() < 0.85) row[c] = true;
+    // 시작 방향 무작위로 매번 바꿔 좌우 편향 방지
+    const startFromLeft = Math.random() < 0.5;
+    if (startFromLeft) {
+      for (let c = 0; c < cols - 1; c++) {
+        if (c > 0 && row[c - 1]) continue;
+        if (Math.random() < 0.6) row[c] = true;
+      }
+    } else {
+      for (let c = cols - 2; c >= 0; c--) {
+        if (c < cols - 2 && row[c + 1]) continue;
+        if (Math.random() < 0.6) row[c] = true;
+      }
     }
     rungs.push(row);
   }
@@ -79,8 +86,8 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
     COLS <= 8 ? 110 :
     COLS <= 10 ? 90 :
     74;
-  const ROW_H = COLS <= 8 ? 40 : 34;
-  const ROWS = Math.max(9, COLS + (COLS <= 8 ? 4 : 3));
+  const ROW_H = COLS <= 8 ? 36 : 30;
+  const ROWS = Math.max(12, COLS + (COLS <= 8 ? 7 : 5));
   const PADDING_X = 60;
   const PADDING_TOP = 84;
   const PADDING_BOTTOM = 92;
@@ -204,7 +211,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
     const validCount = Math.max(2, Math.min(12, editCount));
     const validWins = Math.max(1, Math.min(validCount, editWins));
     const validBlanks = validCount - validWins;
-    const newRows = Math.max(9, validCount + (validCount <= 8 ? 4 : 3));
+    const newRows = Math.max(12, validCount + (validCount <= 8 ? 7 : 5));
     onConfigChange({
       ...config,
       count: validCount,
