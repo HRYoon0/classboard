@@ -12,59 +12,71 @@ const LANE_COLORS = [
   '#a78bfa', '#60a5fa', '#34d399', '#fde047',
 ];
 
-// 가로대(rungs) 생성 — 무작위 순열을 사다리 전체에 분산 배치
-// → 모든 라인이 사다리 위/중/아래 어디서나 좌우 이동
+// 가로대(rungs) 생성 — 무작위로 빽빽하게 깔고 결과가 좋으면 채택 (rejection sampling)
+// → 사다리 전체에 가로대 풍부 + 라인 spread 보장
 function generateRungs(cols: number, rows: number): boolean[][] {
-  const rungs: boolean[][] = Array.from({ length: rows }, () =>
-    new Array(Math.max(0, cols - 1)).fill(false)
-  );
-  if (cols < 2) return rungs;
-
-  // 1. 무작위 순열 — 평균 변위가 충분히 큰 것만 채택
-  let perm: number[] = [];
-  for (let attempt = 0; attempt < 12; attempt++) {
-    perm = Array.from({ length: cols }, (_, i) => i);
-    for (let i = perm.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [perm[i], perm[j]] = [perm[j], perm[i]];
-    }
-    const fixedPoints = perm.filter((v, i) => v === i).length;
-    const avgDispl = perm.reduce((s, v, i) => s + Math.abs(v - i), 0) / perm.length;
-    // 고정점 ≤ 1 + 평균 변위 ≥ COLS/3.5
-    if (fixedPoints <= 1 && avgDispl >= cols / 3.5) break;
+  if (cols < 2) {
+    return Array.from({ length: rows }, () => []);
   }
 
-  // 2. 버블 정렬로 인접 transposition 시퀀스 추출
-  const arr = [...perm];
-  const swapList: number[] = [];
-  for (let i = 0; i < arr.length - 1; i++) {
-    for (let j = 0; j < arr.length - 1 - i; j++) {
-      if (arr[j] > arr[j + 1]) {
-        [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
-        swapList.push(j);
+  // 한 번 무작위로 빽빽하게 깔기
+  const buildRandom = (): boolean[][] => {
+    const rungs: boolean[][] = [];
+    for (let r = 0; r < rows; r++) {
+      const row: boolean[] = new Array(cols - 1).fill(false);
+      // 시작 방향 무작위로 좌우 편향 방지
+      const startFromLeft = Math.random() < 0.5;
+      if (startFromLeft) {
+        for (let c = 0; c < cols - 1; c++) {
+          if (c > 0 && row[c - 1]) continue;
+          if (Math.random() < 0.65) row[c] = true;
+        }
+      } else {
+        for (let c = cols - 2; c >= 0; c--) {
+          if (c < cols - 2 && row[c + 1]) continue;
+          if (Math.random() < 0.65) row[c] = true;
+        }
+      }
+      rungs.push(row);
+    }
+    return rungs;
+  };
+
+  // 사다리 시뮬레이션해서 결과 permutation 도출
+  const computePerm = (rungs: boolean[][]): number[] => {
+    const columns = Array.from({ length: cols }, (_, i) => i);
+    for (const row of rungs) {
+      for (let g = 0; g < cols - 1; g++) {
+        if (row[g]) {
+          [columns[g], columns[g + 1]] = [columns[g + 1], columns[g]];
+        }
       }
     }
-  }
+    // perm[lane] = lane이 도착한 col
+    const perm = new Array<number>(cols);
+    for (let c = 0; c < cols; c++) perm[columns[c]] = c;
+    return perm;
+  };
 
-  // 3. swap을 행에 분산 배치 — 무작위 유효 행 선택으로 사다리 전체에 흩뿌림
-  const nextRow = new Array(Math.max(0, cols - 1)).fill(0);
-  for (const gap of swapList) {
-    const candidates: number[] = [];
-    for (let r = nextRow[gap]; r < rows; r++) {
-      if (gap > 0 && rungs[r][gap - 1]) continue;
-      if (gap < cols - 2 && rungs[r][gap + 1]) continue;
-      candidates.push(r);
+  // 최대 30번까지 시도해 충분히 spread된 permutation 찾기
+  let bestRungs: boolean[][] | null = null;
+  let bestScore = -Infinity;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const rungs = buildRandom();
+    const perm = computePerm(rungs);
+    const fixedPoints = perm.filter((v, i) => v === i).length;
+    const avgDispl = perm.reduce((s, v, i) => s + Math.abs(v - i), 0) / perm.length;
+    // 점수: 평균 변위 - 고정점 페널티
+    const score = avgDispl - fixedPoints * 2;
+    if (fixedPoints <= 1 && avgDispl >= cols / 3.5) {
+      return rungs;
     }
-    if (candidates.length === 0) continue;
-    // 무작위 행 선택 (위에서 아래로 흩뿌림)
-    const r = candidates[Math.floor(Math.random() * candidates.length)];
-    rungs[r][gap] = true;
-    nextRow[gap] = r + 1;
-    if (gap > 0) nextRow[gap - 1] = Math.max(nextRow[gap - 1], r + 1);
-    if (gap < cols - 2) nextRow[gap + 1] = Math.max(nextRow[gap + 1], r + 1);
+    if (score > bestScore) {
+      bestScore = score;
+      bestRungs = rungs;
+    }
   }
-
-  return rungs;
+  return bestRungs ?? buildRandom();
 }
 
 // Fisher-Yates 셔플 — true=당첨, false=꽝
