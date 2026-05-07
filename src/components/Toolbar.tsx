@@ -42,6 +42,18 @@ function TrafficLightIcon() {
   );
 }
 
+function LadderIcon() {
+  return (
+    <svg width={SZ} height={SZ} viewBox="0 0 28 28" fill="none">
+      <line x1="8" y1="3" x2="8" y2="25" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="20" y1="3" x2="20" y2="25" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="8" y1="9" x2="20" y2="9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="8" y1="15" x2="20" y2="15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="8" y1="21" x2="20" y2="21" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 interface WidgetItem {
   type: string;
   icon: React.ReactNode;
@@ -87,6 +99,7 @@ const CATEGORIES: Category[] = [
     items: [
       { type: 'random-name', icon: <IoPersonOutline size={SZ} />, color: '#0ea5e9', label: '이름 뽑기' },
       { type: 'lots', icon: <IoTicketOutline size={SZ} />, color: '#8b5cf6', label: '제비뽑기' },
+      { type: 'ladder', icon: <LadderIcon />, color: '#0ea5e9', label: '사다리 타기' },
       { type: 'group-maker', icon: <IoPeopleOutline size={SZ} />, color: '#f97316', label: '모둠' },
       { type: 'poll', icon: <IoBarChartOutline size={SZ} />, color: '#6366f1', label: '투표' },
       { type: 'dice', icon: <IoDiceOutline size={SZ} />, color: '#8b5cf6', label: '주사위' },
