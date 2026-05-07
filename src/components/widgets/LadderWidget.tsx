@@ -133,8 +133,11 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
 
     const colPath = computePath(startCol, rungs, COLS);
 
-    // 단계별 점 좌표 생성 (수평 이동 포함)
+    // 단계별 점 좌표 생성 (도트 → 사다리 → 이모지)
     const points: { x: number; y: number }[] = [];
+    // 시작: 상단 도트 위치
+    points.push({ x: xOf(colPath[0]), y: yOf(0) - 48 });
+    // 첫 행으로 내려옴
     points.push({ x: xOf(colPath[0]), y: yOf(0) });
     for (let r = 0; r < colPath.length - 1; r++) {
       if (colPath[r] !== colPath[r + 1]) {
@@ -144,6 +147,9 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
       // 다음 행으로 내려감
       points.push({ x: xOf(colPath[r + 1]), y: yOf(r + 1) });
     }
+    // 끝: 하단 이모지 위치
+    const endCol = colPath[colPath.length - 1];
+    points.push({ x: xOf(endCol), y: yOf(ROWS) + 40 });
     pointsRef.current = points;
     setRiderCol(startCol);
     setRiderStep(0);
