@@ -642,19 +642,6 @@ function MapleClock({ hourAngle, minuteAngle, secondAngle, digitalTime, ampm }: 
   const c = size / 2;
   const r = 76;
 
-  // 단풍잎 한 장 (ellipse 5장 부채형 + 줄기)
-  function mapleLeaf(sx: number, sy: number, sz: number, rot: number, opacity: number, color: string) {
-    return (
-      <g transform={`translate(${sx},${sy}) rotate(${rot}) scale(${sz})`} opacity={opacity}>
-        {[-60, -30, 0, 30, 60].map((a) => (
-          <ellipse key={a} cx={0} cy={-7} rx="2.2" ry="7" fill={color}
-            transform={`rotate(${a})`} />
-        ))}
-        <line x1={0} y1={0} x2={0} y2={5} stroke="#7c2d12" strokeWidth="1" strokeLinecap="round" />
-      </g>
-    );
-  }
-
   // 떨어지는 단풍잎 6개 — 위치/딜레이/지속/이모지/사이즈 다양화
   const fallingLeaves = [
     { left: '8%',  delay: 0,   dur: 5.5, emoji: '🍁', size: 18 },
@@ -709,20 +696,6 @@ function MapleClock({ hourAngle, minuteAngle, secondAngle, digitalTime, ampm }: 
         {/* 배경 원 */}
         <circle cx={c} cy={c} r={r} fill="url(#maple-bg)" />
         <circle cx={c} cy={c} r={r} fill="none" stroke="#92400e" strokeWidth="2.5" />
-
-        {/* 시계 안 장식 단풍잎 4장 (1.5/4.5/7.5/10.5시 위치, 각각 다른 가을 색) */}
-        {([
-          { hour: 1.5,  color: '#dc2626' }, // 빨강
-          { hour: 4.5,  color: '#ea580c' }, // 주황
-          { hour: 7.5,  color: '#eab308' }, // 노랑
-          { hour: 10.5, color: '#c2410c' }, // 짙은 주황
-        ]).map(({ hour, color }, i) => {
-          const angle = (hour * 30 - 90) * (Math.PI / 180);
-          const dr = r - 14;
-          const lx = c + dr * Math.cos(angle);
-          const ly = c + dr * Math.sin(angle);
-          return <g key={i}>{mapleLeaf(lx, ly, 0.95, hour * 30 + 10, 0.85, color)}</g>;
-        })}
 
         {/* 분 눈금 점 (12, 3, 6, 9 제외) */}
         {Array.from({ length: 12 }).map((_, i) => {
