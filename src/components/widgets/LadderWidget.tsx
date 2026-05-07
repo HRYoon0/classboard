@@ -70,17 +70,16 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const [revealLane, setRevealLane] = useState<number | null>(null);
   const timersRef = useRef<number[]>([]);
 
-  // 레이아웃 계산 — 컬럼 수가 많아도 디자인 폭이 일정하게 유지되도록
-  // (위젯 스케일이 일관되어 폰트가 컬럼 수에 따라 작아지지 않게)
+  // 레이아웃 계산 — 좌우 폭을 더 써서 사다리를 넓게
   const COLS = Math.max(2, Math.min(12, count));
   const LANE_W =
-    COLS <= 4 ? 110 :
-    COLS <= 8 ? 92 :
-    COLS <= 10 ? 72 :
-    58;
-  const ROW_H = COLS <= 8 ? 38 : 32;
+    COLS <= 4 ? 140 :
+    COLS <= 8 ? 110 :
+    COLS <= 10 ? 90 :
+    74;
+  const ROW_H = COLS <= 8 ? 40 : 34;
   const ROWS = Math.max(9, COLS + (COLS <= 8 ? 4 : 3));
-  const PADDING_X = 48;
+  const PADDING_X = 60;
   const PADDING_TOP = 84;
   const PADDING_BOTTOM = 92;
   const ladderW = (COLS - 1) * LANE_W + PADDING_X * 2;
