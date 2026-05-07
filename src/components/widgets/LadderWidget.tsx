@@ -69,12 +69,12 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const [revealLane, setRevealLane] = useState<number | null>(null);
   const timersRef = useRef<number[]>([]);
 
-  // 레이아웃 계산
+  // 레이아웃 계산 — 가로 우선 비율로 위젯 너비를 효율적으로 사용
   const COLS = Math.max(2, Math.min(8, count));
-  const ROWS = Math.max(8, COLS * 2);
-  const LANE_W = COLS <= 4 ? 80 : COLS <= 6 ? 65 : 55;
-  const ROW_H = 32;
-  const PADDING_X = 30;
+  const ROWS = Math.max(6, COLS + 2);
+  const LANE_W = COLS <= 4 ? 90 : 75;
+  const ROW_H = 36;
+  const PADDING_X = 36;
   const PADDING_TOP = 56;
   const PADDING_BOTTOM = 70;
   const ladderW = (COLS - 1) * LANE_W + PADDING_X * 2;
@@ -184,7 +184,7 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
   const handleSubmit = () => {
     const validCount = Math.max(2, Math.min(8, editCount));
     const validBlanks = Math.max(0, Math.min(validCount - 1, editBlanks));
-    const newRows = Math.max(8, validCount * 2);
+    const newRows = Math.max(6, validCount + 2);
     onConfigChange({
       ...config,
       count: validCount,
