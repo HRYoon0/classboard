@@ -562,15 +562,21 @@ export default function LadderWidget({ config, onConfigChange }: Props) {
               animation: 'ladderResultPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 18,
+              flexWrap: 'nowrap',
+              whiteSpace: 'nowrap',
               zIndex: 10,
               border: `3px solid ${results[revealLane] ? '#fbbf24' : '#1e293b'}`,
             }}
           >
-            <span>{riderCol + 1}번 →</span>
-            <span style={{ fontSize: 60 }}>
+            <span style={{ whiteSpace: 'nowrap' }}>
+              {riderCol + 1}번 →
+            </span>
+            <span style={{ fontSize: 60, lineHeight: 1 }}>
               {results[revealLane] ? '😄' : '😭'}
             </span>
-            <span>{results[revealLane] ? '통과!' : '꽝'}</span>
+            <span style={{ whiteSpace: 'nowrap' }}>
+              {results[revealLane] ? '통과!' : '꽝'}
+            </span>
           </div>
         )}
 
