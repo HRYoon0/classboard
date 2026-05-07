@@ -70,6 +70,15 @@ export default function TimerWidget({ config, onConfigChange }: Props) {
     };
   }, [isRunning, playAlarm]);
 
+  // 클라우드 로드/외부 변경으로 config가 바뀌었을 때 — 실행 중이 아니면 시간 동기화
+  useEffect(() => {
+    if (!isRunning) {
+      setTotalSeconds(initialMinutes * 60 + initialSeconds);
+      setIsFinished(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMinutes, initialSeconds]);
+
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   const progress = totalInitial > 0 ? totalSeconds / totalInitial : 0;

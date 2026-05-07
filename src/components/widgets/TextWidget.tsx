@@ -96,24 +96,12 @@ function TextWidget({ config, onConfigChange }: Props) {
   const align = (config.align as string) || 'center';
   const color = (config.color as string) || '#1e293b';
   const editorRef = useRef<HTMLDivElement>(null);
-  const initializedRef = useRef(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  // 스타일 동기화 — config 변경 시 항상 적용
   useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
-    if (!initializedRef.current) {
-      // sanitize 후 DOM으로 삽입 (XSS 방지)
-      const raw = (config.text as string) || '';
-      const cleaned = sanitizeHtml(raw);
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = cleaned;
-      el.textContent = '';
-      while (tempDiv.firstChild) {
-        el.appendChild(tempDiv.firstChild);
-      }
-      initializedRef.current = true;
-    }
     el.style.fontSize = `${fontSize}px`;
     el.style.fontFamily = fontFamily;
     el.style.fontWeight = bold ? '700' : '400';
@@ -123,6 +111,28 @@ function TextWidget({ config, onConfigChange }: Props) {
     el.style.lineHeight = '1.6';
     el.style.caretColor = color;
   }, [fontSize, fontFamily, bold, italic, align, color]);
+
+  // 텍스트 동기화 — 편집 중이 아니고 DOM 콘텐츠와 다를 때만 갱신
+  // (사용자 진행 중 편집은 보호)
+  useEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    if (isEditing) return;
+
+    const incoming = (config.text as string) || '';
+    const cleaned = sanitizeHtml(incoming);
+
+    // 현재 에디터 내용이 동일하면 갱신 안 함 (커서/포커스 보존)
+    if (sanitizeHtml(el.innerHTML) === cleaned) return;
+
+    // DOMParser로 안전하게 파싱 후 노드 이동 (innerHTML 직접 할당 회피)
+    const parser = new DOMParser();
+    const parsed = parser.parseFromString(cleaned, 'text/html');
+    el.textContent = '';
+    Array.from(parsed.body.childNodes).forEach((node) => {
+      el.appendChild(node);
+    });
+  }, [config.text, isEditing]);
 
   // 콘텐츠 저장 (sanitize 후 저장)
   const saveContent = useCallback(() => {

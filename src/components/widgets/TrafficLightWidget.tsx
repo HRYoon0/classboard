@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useContainerScale } from '../../hooks/useContainerScale';
 
 type Light = 'red' | 'yellow' | 'green' | 'off';
 
@@ -34,10 +35,12 @@ const LIGHTS: {
 
 export default function TrafficLightWidget() {
   const [activeLight, setActiveLight] = useState<Light>('green');
+  // 신호등 자연 콘텐츠 크기 — 윈도우/맥 폰트 차이까지 흡수할 수 있도록 약간 여유
+  const { containerRef, scale } = useContainerScale(160, 360);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-      {/* 신호등 하우징 */}
+    <div ref={containerRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transform: `scale(${scale})`, transformOrigin: 'center center' }}>
       {/* 신호등 하우징 */}
       <div style={{ background: 'linear-gradient(to bottom, #64748b, #334155)', borderRadius: '42px', padding: '9px', display: 'flex', flexDirection: 'column', gap: '7px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
         {LIGHTS.map(({ color, activeColor, glowColor, dimColor }) => {
@@ -84,10 +87,12 @@ export default function TrafficLightWidget() {
           textAlign: 'center',
           textShadow: '0 1px 3px rgba(0,0,0,0.1)',
           margin: '12px 0 0',
+          whiteSpace: 'nowrap',
         }}>
           {LIGHTS.find((l) => l.color === activeLight)?.label}
         </p>
       )}
+    </div>
     </div>
   );
 }
