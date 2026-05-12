@@ -5,6 +5,14 @@ compatibility_date = "2024-09-01"
 [vars]
 APP_URL = "https://classboard-app.vercel.app"
 GOOGLE_CLIENT_ID = "739342381531-n47l404ioq2a9pssu0unha5sv5j75vit.apps.googleusercontent.com"
+ADMIN_EMAIL = "tmdsh2000@gmail.com"
 
 # GOOGLE_CLIENT_SECRET는 시크릿으로 설정:
 # wrangler secret put GOOGLE_CLIENT_SECRET
+
+# 사용량 통계용 KV 네임스페이스
+# 최초 1회 셋업: wrangler kv namespace create classboard-stats
+# 위 명령어가 출력하는 id 값을 아래 id에 붙여넣고 배포
+[[kv_namespaces]]
+binding = "STATS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"

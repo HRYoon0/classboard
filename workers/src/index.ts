@@ -5,6 +5,8 @@ interface Env {
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   APP_URL: string;
+  ADMIN_EMAIL: string;
+  STATS: KVNamespace;
 }
 
 interface Session {
@@ -256,13 +258,54 @@ async function handleCallback(request: Request, env: Env): Promise<Response> {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 통계 추적 (사용자당 일 1회 KV write)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function trackVisit(env: Env, email: string, ctx: ExecutionContext): Promise<void> {
+  const day = todayKey();
+  const dailyFlag = `seen:${day}:${email}`;
+  const lifetimeFlag = `lifetime:${email}`;
+
+  ctx.waitUntil((async () => {
+    const [todaySeen, everSeen] = await Promise.all([
+      env.STATS.get(dailyFlag),
+      env.STATS.get(lifetimeFlag),
+    ]);
+
+    const writes: Promise<unknown>[] = [];
+
+    if (!todaySeen) {
+      const currentDau = Number(await env.STATS.get(`dau:${day}`)) || 0;
+      writes.push(env.STATS.put(`dau:${day}`, String(currentDau + 1), { expirationTtl: 60 * 60 * 24 * 90 }));
+      writes.push(env.STATS.put(dailyFlag, '1', { expirationTtl: 60 * 60 * 48 }));
+    }
+
+    if (!everSeen) {
+      const currentTotal = Number(await env.STATS.get('users:total')) || 0;
+      writes.push(env.STATS.put('users:total', String(currentTotal + 1)));
+      writes.push(env.STATS.put(lifetimeFlag, '1'));
+    }
+
+    await Promise.all(writes);
+  })());
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Route: /api/auth/me
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-async function handleMe(request: Request, env: Env): Promise<Response> {
+async function handleMe(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   try {
     const { session, cookie } = await getValidSession(request, env);
     if (!session) return json({ loggedIn: false });
+
+    if (session.user.email) {
+      trackVisit(env, session.user.email, ctx);
+    }
 
     const headers: Record<string, string> = {};
     if (cookie) headers['Set-Cookie'] = cookie;
@@ -271,6 +314,43 @@ async function handleMe(request: Request, env: Env): Promise<Response> {
   } catch {
     return json({ loggedIn: false });
   }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Route: /api/admin/stats (관리자 전용)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+async function handleAdminStats(request: Request, env: Env): Promise<Response> {
+  const { session } = await getValidSession(request, env);
+  if (!session || session.user.email !== env.ADMIN_EMAIL) {
+    return json({ error: 'forbidden' }, 403);
+  }
+
+  const today = todayKey();
+  const days30: string[] = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - i);
+    days30.push(d.toISOString().slice(0, 10));
+  }
+
+  const dauValues = await Promise.all(
+    days30.map((day) => env.STATS.get(`dau:${day}`).then((v) => ({ day, count: Number(v) || 0 }))),
+  );
+
+  const totalUsers = Number(await env.STATS.get('users:total')) || 0;
+  const dauToday = dauValues[0].count;
+  const dau7Sum = dauValues.slice(0, 7).reduce((s, x) => s + x.count, 0);
+  const dau30Sum = dauValues.reduce((s, x) => s + x.count, 0);
+
+  return json({
+    today,
+    dauToday,
+    totalUsers,
+    dau7Avg: Math.round(dau7Sum / 7),
+    dau30Avg: Math.round(dau30Sum / 30),
+    trend: dauValues.slice().reverse(),
+  }, 200, { 'Cache-Control': 'no-store' });
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -467,7 +547,7 @@ async function handleSave(request: Request, env: Env): Promise<Response> {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     switch (url.pathname) {
@@ -476,13 +556,15 @@ export default {
       case '/api/auth/callback':
         return handleCallback(request, env);
       case '/api/auth/me':
-        return handleMe(request, env);
+        return handleMe(request, env, ctx);
       case '/api/auth/logout':
         return handleLogout();
       case '/api/drive/load':
         return handleLoad(request, env);
       case '/api/drive/save':
         return handleSave(request, env);
+      case '/api/admin/stats':
+        return handleAdminStats(request, env);
       default:
         return new Response('Not found', { status: 404 });
     }

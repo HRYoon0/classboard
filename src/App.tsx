@@ -16,6 +16,9 @@ import {
   saveToDrive,
   loadFromDrive,
 } from './services/googleDrive';
+import AdminStatsBadge from './components/AdminStatsBadge';
+
+const ADMIN_EMAIL = 'tmdsh2000@gmail.com';
 
 function App() {
   const {
@@ -384,6 +387,8 @@ function App() {
           textDecoration: 'none',
         }}>서비스 약관</a>
       </div>
+
+      {user?.email === ADMIN_EMAIL && <AdminStatsBadge />}
     </div>
   );
 }
