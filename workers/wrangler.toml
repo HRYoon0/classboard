@@ -15,4 +15,4 @@ ADMIN_EMAIL = "tmdsh2000@gmail.com"
 # 위 명령어가 출력하는 id 값을 아래 id에 붙여넣고 배포
 [[kv_namespaces]]
 binding = "STATS"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "c9a46d4f8e3e400a8eec677593943470"
