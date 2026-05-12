@@ -258,6 +258,7 @@ function App() {
 
         {user && (
           <>
+            {user.email === ADMIN_EMAIL && <AdminStatsBadge />}
             <button onClick={handleSave} disabled={syncing}
               className="w-9 h-9 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-lg border border-white/60 text-slate-600 hover:bg-white hover:text-indigo-600 transition-colors disabled:opacity-50"
               title="클라우드에 저장">
@@ -387,8 +388,6 @@ function App() {
           textDecoration: 'none',
         }}>서비스 약관</a>
       </div>
-
-      {user?.email === ADMIN_EMAIL && <AdminStatsBadge />}
     </div>
   );
 }

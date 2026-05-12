@@ -25,35 +25,15 @@ export default function AdminStatsBadge() {
     <>
       <button
         onClick={() => setOpen(true)}
-        title="관리자 통계 (클릭하여 상세 보기)"
-        style={{
-          position: 'fixed',
-          right: 16,
-          bottom: 16,
-          zIndex: 9000,
-          background: 'rgba(15, 23, 42, 0.85)',
-          color: 'white',
-          border: 'none',
-          borderRadius: 10,
-          padding: '8px 12px',
-          fontSize: 12,
-          fontFamily: 'inherit',
-          cursor: 'pointer',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          lineHeight: 1.3,
-        }}
+        title={`관리자 통계 — 오늘 ${stats.dauToday}명, 누적 ${stats.totalUsers}명 (클릭하여 상세 보기)`}
+        className="h-9 flex items-center gap-1.5 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg border border-white/60 text-slate-600 hover:bg-white hover:text-indigo-600 transition-colors"
+        style={{ paddingLeft: 12, paddingRight: 12, fontFamily: 'inherit' }}
       >
         <span style={{ fontSize: 14 }}>📊</span>
-        <span>
-          <strong style={{ fontSize: 14 }}>{stats.dauToday}</strong>
-          <span style={{ opacity: 0.7, marginLeft: 4 }}>오늘</span>
-          <span style={{ opacity: 0.5, margin: '0 6px' }}>·</span>
-          <strong style={{ fontSize: 14 }}>{stats.totalUsers}</strong>
-          <span style={{ opacity: 0.7, marginLeft: 4 }}>누적</span>
+        <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1 }}>
+          {stats.dauToday}
+          <span style={{ opacity: 0.4, margin: '0 4px', fontWeight: 400 }}>·</span>
+          {stats.totalUsers}
         </span>
       </button>
 
