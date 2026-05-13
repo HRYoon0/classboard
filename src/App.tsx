@@ -16,9 +16,6 @@ import {
   saveToDrive,
   loadFromDrive,
 } from './services/googleDrive';
-import AdminStatsBadge from './components/AdminStatsBadge';
-
-const ADMIN_EMAIL = 'tmdsh2000@gmail.com';
 
 function App() {
   const {
@@ -258,7 +255,6 @@ function App() {
 
         {user && (
           <>
-            {user.email === ADMIN_EMAIL && <AdminStatsBadge />}
             <button onClick={handleSave} disabled={syncing}
               className="w-9 h-9 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-lg border border-white/60 text-slate-600 hover:bg-white hover:text-indigo-600 transition-colors disabled:opacity-50"
               title="클라우드에 저장">

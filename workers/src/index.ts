@@ -5,8 +5,6 @@ interface Env {
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   APP_URL: string;
-  ADMIN_EMAIL: string;
-  STATS: KVNamespace;
 }
 
 interface Session {
@@ -258,66 +256,13 @@ async function handleCallback(request: Request, env: Env): Promise<Response> {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 통계 추적 — set 멤버십 패턴 (race-condition free)
-//
-// 카운터(read+1+write) 패턴은 KV의 eventual consistency 때문에
-// 동시 접속자가 서로의 증가를 덮어쓰는 문제가 있어서, 사용자별
-// flag 키만 쓰고 조회 시 prefix list로 카운트한다.
-//
-// 일별 flag(seen:<day>:<email>)는 TTL 90일.
-// 평생 flag(lifetime:<email>)는 TTL 없음.
-// 하루에 사용자당 최대 2 KV write (첫 접속일 경우만, 이후는 0)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-async function trackVisit(env: Env, email: string, ctx: ExecutionContext): Promise<void> {
-  const day = todayKey();
-  const dailyFlag = `seen:${day}:${email}`;
-  const lifetimeFlag = `lifetime:${email}`;
-
-  ctx.waitUntil((async () => {
-    const [todaySeen, everSeen] = await Promise.all([
-      env.STATS.get(dailyFlag),
-      env.STATS.get(lifetimeFlag),
-    ]);
-
-    const writes: Promise<unknown>[] = [];
-    if (!todaySeen) {
-      writes.push(env.STATS.put(dailyFlag, '1', { expirationTtl: 60 * 60 * 24 * 90 }));
-    }
-    if (!everSeen) {
-      writes.push(env.STATS.put(lifetimeFlag, '1'));
-    }
-    await Promise.all(writes);
-  })());
-}
-
-async function countByPrefix(env: Env, prefix: string): Promise<number> {
-  let count = 0;
-  let cursor: string | undefined;
-  do {
-    const res = await env.STATS.list({ prefix, cursor, limit: 1000 });
-    count += res.keys.length;
-    cursor = res.list_complete ? undefined : res.cursor;
-  } while (cursor);
-  return count;
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Route: /api/auth/me
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-async function handleMe(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function handleMe(request: Request, env: Env): Promise<Response> {
   try {
     const { session, cookie } = await getValidSession(request, env);
     if (!session) return json({ loggedIn: false });
-
-    if (session.user.email) {
-      trackVisit(env, session.user.email, ctx);
-    }
 
     const headers: Record<string, string> = {};
     if (cookie) headers['Set-Cookie'] = cookie;
@@ -326,47 +271,6 @@ async function handleMe(request: Request, env: Env, ctx: ExecutionContext): Prom
   } catch {
     return json({ loggedIn: false });
   }
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Route: /api/admin/stats (관리자 전용)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-async function handleAdminStats(request: Request, env: Env): Promise<Response> {
-  const { session } = await getValidSession(request, env);
-  if (!session || session.user.email !== env.ADMIN_EMAIL) {
-    return json({ error: 'forbidden' }, 403);
-  }
-
-  const today = todayKey();
-  const days30: string[] = [];
-  for (let i = 0; i < 30; i++) {
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() - i);
-    days30.push(d.toISOString().slice(0, 10));
-  }
-
-  const [dauValues, totalUsers] = await Promise.all([
-    Promise.all(
-      days30.map((day) =>
-        countByPrefix(env, `seen:${day}:`).then((count) => ({ day, count })),
-      ),
-    ),
-    countByPrefix(env, 'lifetime:'),
-  ]);
-
-  const dauToday = dauValues[0].count;
-  const dau7Sum = dauValues.slice(0, 7).reduce((s, x) => s + x.count, 0);
-  const dau30Sum = dauValues.reduce((s, x) => s + x.count, 0);
-
-  return json({
-    today,
-    dauToday,
-    totalUsers,
-    dau7Avg: Math.round(dau7Sum / 7),
-    dau30Avg: Math.round(dau30Sum / 30),
-    trend: dauValues.slice().reverse(),
-  }, 200, { 'Cache-Control': 'no-store' });
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -563,7 +467,7 @@ async function handleSave(request: Request, env: Env): Promise<Response> {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
     switch (url.pathname) {
@@ -572,15 +476,13 @@ export default {
       case '/api/auth/callback':
         return handleCallback(request, env);
       case '/api/auth/me':
-        return handleMe(request, env, ctx);
+        return handleMe(request, env);
       case '/api/auth/logout':
         return handleLogout();
       case '/api/drive/load':
         return handleLoad(request, env);
       case '/api/drive/save':
         return handleSave(request, env);
-      case '/api/admin/stats':
-        return handleAdminStats(request, env);
       default:
         return new Response('Not found', { status: 404 });
     }
