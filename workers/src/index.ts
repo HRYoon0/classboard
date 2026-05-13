@@ -258,7 +258,15 @@ async function handleCallback(request: Request, env: Env): Promise<Response> {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 통계 추적 (사용자당 일 1회 KV write)
+// 통계 추적 — set 멤버십 패턴 (race-condition free)
+//
+// 카운터(read+1+write) 패턴은 KV의 eventual consistency 때문에
+// 동시 접속자가 서로의 증가를 덮어쓰는 문제가 있어서, 사용자별
+// flag 키만 쓰고 조회 시 prefix list로 카운트한다.
+//
+// 일별 flag(seen:<day>:<email>)는 TTL 90일.
+// 평생 flag(lifetime:<email>)는 TTL 없음.
+// 하루에 사용자당 최대 2 KV write (첫 접속일 경우만, 이후는 0)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 function todayKey(): string {
@@ -277,21 +285,25 @@ async function trackVisit(env: Env, email: string, ctx: ExecutionContext): Promi
     ]);
 
     const writes: Promise<unknown>[] = [];
-
     if (!todaySeen) {
-      const currentDau = Number(await env.STATS.get(`dau:${day}`)) || 0;
-      writes.push(env.STATS.put(`dau:${day}`, String(currentDau + 1), { expirationTtl: 60 * 60 * 24 * 90 }));
-      writes.push(env.STATS.put(dailyFlag, '1', { expirationTtl: 60 * 60 * 48 }));
+      writes.push(env.STATS.put(dailyFlag, '1', { expirationTtl: 60 * 60 * 24 * 90 }));
     }
-
     if (!everSeen) {
-      const currentTotal = Number(await env.STATS.get('users:total')) || 0;
-      writes.push(env.STATS.put('users:total', String(currentTotal + 1)));
       writes.push(env.STATS.put(lifetimeFlag, '1'));
     }
-
     await Promise.all(writes);
   })());
+}
+
+async function countByPrefix(env: Env, prefix: string): Promise<number> {
+  let count = 0;
+  let cursor: string | undefined;
+  do {
+    const res = await env.STATS.list({ prefix, cursor, limit: 1000 });
+    count += res.keys.length;
+    cursor = res.list_complete ? undefined : res.cursor;
+  } while (cursor);
+  return count;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -334,11 +346,15 @@ async function handleAdminStats(request: Request, env: Env): Promise<Response> {
     days30.push(d.toISOString().slice(0, 10));
   }
 
-  const dauValues = await Promise.all(
-    days30.map((day) => env.STATS.get(`dau:${day}`).then((v) => ({ day, count: Number(v) || 0 }))),
-  );
+  const [dauValues, totalUsers] = await Promise.all([
+    Promise.all(
+      days30.map((day) =>
+        countByPrefix(env, `seen:${day}:`).then((count) => ({ day, count })),
+      ),
+    ),
+    countByPrefix(env, 'lifetime:'),
+  ]);
 
-  const totalUsers = Number(await env.STATS.get('users:total')) || 0;
   const dauToday = dauValues[0].count;
   const dau7Sum = dauValues.slice(0, 7).reduce((s, x) => s + x.count, 0);
   const dau30Sum = dauValues.reduce((s, x) => s + x.count, 0);
