@@ -17,8 +17,10 @@ interface Props {
 }
 
 export default function TimerWidget({ config, onConfigChange }: Props) {
-  const initialMinutes = (config.minutes as number) || 10;
-  const initialSeconds = (config.seconds as number) || 0;
+  // 분=0인 타이머(예: 50초)를 지원하려면 nullish 병합(??)을 써야 한다.
+  // ||를 쓰면 0이 falsy로 취급돼 기본값 10으로 오염되어, 리셋 시 10분이 더해지는 버그가 생긴다.
+  const initialMinutes = (config.minutes as number) ?? 10;
+  const initialSeconds = (config.seconds as number) ?? 0;
   const selectedSound = (config.alarmSound as string) || 'alarm1';
   const totalInitial = initialMinutes * 60 + initialSeconds;
   const [totalSeconds, setTotalSeconds] = useState(totalInitial);
