@@ -48,11 +48,12 @@ function App() {
       return cached ? JSON.parse(cached) : null;
     } catch { return null; }
   });
-  const saveUser = (info: { name: string; email: string; picture: string } | null) => {
+  // useCallback — doSave 등에서 의존성으로 쓰이므로 참조가 매 렌더 바뀌면 안 된다
+  const saveUser = useCallback((info: { name: string; email: string; picture: string } | null) => {
     setUser(info);
     if (info) localStorage.setItem('classboard-user', JSON.stringify(info));
     else localStorage.removeItem('classboard-user');
-  };
+  }, []);
 
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
@@ -131,9 +132,19 @@ function App() {
         } else if (isFirstLogin) {
           showMsg(`${result.user.name}님 로그인 완료`);
         }
+      } else if (result.offline) {
+        // 서버에 닿지 못한 것뿐이라 세션은 살아있을 수 있다 — 캐시를 지우지 않는다.
+        // 네트워크가 돌아오면 자동 저장이 그대로 이어진다.
+        if (user) showMsg('오프라인 — 클라우드 저장이 잠시 중단됩니다');
+      } else {
+        // 서버가 확실하게 "로그인 안 됨"이라고 답했다.
+        // 여기서 캐시를 남기면 로그인된 것처럼 보이면서 저장만 실패하는 상태가 된다.
+        saveUser(null);
       }
     })();
-  }, []);
+    // user 를 deps 에 넣지 말 것 — 로그인할 때마다 이 effect 가 다시 돌아
+    // 클라우드 로드가 반복된다. 여기서 필요한 건 "앱 시작 시점의 캐시 상태"다.
+  }, [saveUser]);
 
   // 로그인 버튼
   const handleSignIn = () => signIn();
@@ -164,8 +175,23 @@ function App() {
       version: 2,
     });
     savingRef.current = false;
-    if (res.ok) showMsg('자동 저장 완료');
-  }, []);
+
+    if (res.ok) {
+      showMsg('자동 저장 완료');
+      return;
+    }
+
+    // 저장에 실패했으면 변경사항이 아직 남아 있다 — 다음 기회에 다시 시도되도록 되돌린다
+    dirtyRef.current = true;
+
+    // 세션이 끊긴 경우엔 조용히 넘어가면 안 된다. 저장되는 줄 알고 작업이 유실된다.
+    if (res.error === 'unauthorized' || res.error === 'refresh_failed') {
+      saveUser(null);
+      showMsg('세션이 만료되었습니다. 다시 로그인해주세요');
+    } else {
+      showMsg('자동 저장 실패 — 잠시 후 다시 시도합니다');
+    }
+  }, [saveUser]);
 
   useEffect(() => {
     if (!user) return;

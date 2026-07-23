@@ -25,13 +25,15 @@ export async function signOut() {
 }
 
 // 세션 확인 (서버에서 토큰 갱신까지 처리)
-export async function getMe(): Promise<{ loggedIn: boolean; user?: UserInfo }> {
+// offline: true 는 "서버가 로그아웃이라고 답한 것"이 아니라 "서버에 닿지 못한 것".
+// 둘을 구분해야 네트워크가 끊겼을 때와 세션이 끊겼을 때를 다르게 처리할 수 있다.
+export async function getMe(): Promise<{ loggedIn: boolean; user?: UserInfo; offline?: boolean }> {
   try {
     const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
     if (!res.ok) return { loggedIn: false };
     return await res.json();
   } catch {
-    return { loggedIn: false };
+    return { loggedIn: false, offline: true };
   }
 }
 
