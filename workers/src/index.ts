@@ -48,10 +48,31 @@ async function sessionCookie(session: Session, env: Env): Promise<string> {
 
 // ─── 세션 헬퍼 ───
 
-async function parseSession(request: Request, env: Env): Promise<Session | null> {
+// legacy: 암호화 이전의 평문 Base64 쿠키였다는 뜻. 호출부에서 암호화 쿠키로 즉시 교체한다.
+async function parseSession(
+  request: Request,
+  env: Env,
+): Promise<{ session: Session; legacy: boolean } | null> {
   const val = parseCookies(request)['cb_session'];
   if (!val) return null;
-  return (await unseal(val, env.SESSION_KEY)) as Session | null;
+
+  const session = (await unseal(val, env.SESSION_KEY)) as Session | null;
+  if (session) return { session, legacy: false };
+
+  // ponytail: 구 평문 쿠키 1회 수용 — 교체 즉시 사라진다. 쿠키 Max-Age 가 30일이므로
+  // 2026-08-22 이후에는 이 블록과 fromBase64 를 지워도 된다.
+  // (평문 쿠키를 훔친 공격자는 그 안의 refresh_token 을 구글에 직접 쓸 수 있으므로
+  //  이 경로가 추가로 열어주는 공격 표면은 없다.)
+  try {
+    const bin = atob(val);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const legacySession = JSON.parse(new TextDecoder().decode(bytes)) as Session;
+    if (!legacySession?.accessToken) return null;
+    return { session: legacySession, legacy: true };
+  } catch {
+    return null;
+  }
 }
 
 async function refreshAccessToken(session: Session, env: Env): Promise<Session | null> {
@@ -79,13 +100,19 @@ async function getValidSession(
   request: Request,
   env: Env,
 ): Promise<{ session: Session | null; cookie?: string }> {
-  const session = await parseSession(request, env);
-  if (!session) return { session: null };
+  const parsed = await parseSession(request, env);
+  if (!parsed) return { session: null };
+  const { session, legacy } = parsed;
+
   if (Date.now() > session.expiresAt - 60 * 1000) {
     const refreshed = await refreshAccessToken(session, env);
     if (!refreshed) return { session: null };
     return { session: refreshed, cookie: await sessionCookie(refreshed, env) };
   }
+
+  // 구 평문 쿠키였다면 아직 만료 전이어도 지금 바로 암호화 쿠키로 갈아끼운다
+  if (legacy) return { session, cookie: await sessionCookie(session, env) };
+
   return { session };
 }
 
