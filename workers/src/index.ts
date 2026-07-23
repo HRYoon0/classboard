@@ -1,10 +1,14 @@
 // ClassBoard API — Cloudflare Workers
 // 기존 Vercel Serverless Functions를 Workers로 마이그레이션
 
+import { seal, unseal } from './session-crypto.mjs';
+
 interface Env {
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   APP_URL: string;
+  /** 세션 쿠키 암호화 키 — wrangler secret put SESSION_KEY */
+  SESSION_KEY: string;
 }
 
 interface Session {
@@ -18,17 +22,6 @@ const FILE_NAME = 'classboard-data.json';
 const MAX_AGE = 30 * 24 * 60 * 60; // 30일
 
 // ─── Base64 헬퍼 (Buffer 없이) ───
-
-function toBase64(str: string): string {
-  return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
-}
-
-function fromBase64(b64: string): string {
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
-}
 
 function base64urlEncode(bytes: Uint8Array): string {
   let binary = '';
@@ -48,22 +41,17 @@ function parseCookies(request: Request): Record<string, string> {
   return cookies;
 }
 
-function sessionCookie(session: Session): string {
-  const val = toBase64(JSON.stringify(session));
+async function sessionCookie(session: Session, env: Env): Promise<string> {
+  const val = await seal(session, env.SESSION_KEY);
   return `cb_session=${val}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`;
 }
 
 // ─── 세션 헬퍼 ───
 
-function parseSession(request: Request): Session | null {
-  const cookies = parseCookies(request);
-  const val = cookies['cb_session'];
+async function parseSession(request: Request, env: Env): Promise<Session | null> {
+  const val = parseCookies(request)['cb_session'];
   if (!val) return null;
-  try {
-    return JSON.parse(fromBase64(val)) as Session;
-  } catch {
-    return null;
-  }
+  return (await unseal(val, env.SESSION_KEY)) as Session | null;
 }
 
 async function refreshAccessToken(session: Session, env: Env): Promise<Session | null> {
@@ -91,12 +79,12 @@ async function getValidSession(
   request: Request,
   env: Env,
 ): Promise<{ session: Session | null; cookie?: string }> {
-  const session = parseSession(request);
+  const session = await parseSession(request, env);
   if (!session) return { session: null };
   if (Date.now() > session.expiresAt - 60 * 1000) {
     const refreshed = await refreshAccessToken(session, env);
     if (!refreshed) return { session: null };
-    return { session: refreshed, cookie: sessionCookie(refreshed) };
+    return { session: refreshed, cookie: await sessionCookie(refreshed, env) };
   }
   return { session };
 }
@@ -136,9 +124,9 @@ async function handleLogin(_request: Request, env: Env): Promise<Response> {
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 
-  // 임시 쿠키에 code_verifier + state 저장
-  const tempData = JSON.stringify({ codeVerifier, state });
-  const tempCookie = `cb_auth_temp=${toBase64(tempData)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`;
+  // 임시 쿠키에 code_verifier + state 저장 (PKCE verifier이므로 세션과 동일하게 암호화)
+  const tempVal = await seal({ codeVerifier, state }, env.SESSION_KEY);
+  const tempCookie = `cb_auth_temp=${tempVal}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`;
 
   const params = new URLSearchParams({
     client_id: env.GOOGLE_CLIENT_ID,
@@ -183,8 +171,11 @@ async function handleCallback(request: Request, env: Env): Promise<Response> {
       return Response.redirect(`${appUrl}?login=error&reason=no_temp_cookie`, 302);
     }
 
-    const parsed = JSON.parse(fromBase64(tempCookie));
-    if (state !== parsed.state) {
+    const parsed = (await unseal(tempCookie, env.SESSION_KEY)) as {
+      codeVerifier: string;
+      state: string;
+    } | null;
+    if (!parsed || !state || state !== parsed.state) {
       return Response.redirect(`${appUrl}?login=error&reason=state_mismatch`, 302);
     }
 
@@ -242,7 +233,7 @@ async function handleCallback(request: Request, env: Env): Promise<Response> {
     // 복수 Set-Cookie 헤더 → Headers.append 사용
     const headers = new Headers();
     headers.set('Location', `${appUrl}?login=success`);
-    headers.append('Set-Cookie', sessionCookie(session));
+    headers.append('Set-Cookie', await sessionCookie(session, env));
     headers.append('Set-Cookie', 'cb_auth_temp=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
 
     return new Response(null, { status: 302, headers });
@@ -316,7 +307,7 @@ async function handleLoad(request: Request, env: Env): Promise<Response> {
       if (!refreshed) {
         return json({ data: null, error: 'refresh_failed' }, 401, noCacheHeaders);
       }
-      extraHeaders['Set-Cookie'] = sessionCookie(refreshed);
+      extraHeaders['Set-Cookie'] = await sessionCookie(refreshed, env);
       session = refreshed;
       searchRes = await fetch(searchUrl, {
         headers: { Authorization: `Bearer ${session.accessToken}` },
@@ -447,7 +438,7 @@ async function handleSave(request: Request, env: Env): Promise<Response> {
       if (!refreshed) {
         return json({ ok: false, error: 'refresh_failed' }, 401);
       }
-      extraHeaders['Set-Cookie'] = sessionCookie(refreshed);
+      extraHeaders['Set-Cookie'] = await sessionCookie(refreshed, env);
       session = refreshed;
       result = await doRequest(session.accessToken);
     }
@@ -469,6 +460,11 @@ async function handleSave(request: Request, env: Env): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    // 시크릿 미설정 시 조용히 고정 키로 암호화되는 것을 막는다 (wrangler secret put SESSION_KEY)
+    if (!env.SESSION_KEY) {
+      return json({ error: 'session_key_not_configured' }, 500);
+    }
 
     switch (url.pathname) {
       case '/api/auth/login':

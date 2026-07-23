@@ -6,5 +6,6 @@ compatibility_date = "2024-09-01"
 APP_URL = "https://classboard-app.vercel.app"
 GOOGLE_CLIENT_ID = "739342381531-n47l404ioq2a9pssu0unha5sv5j75vit.apps.googleusercontent.com"
 
-# GOOGLE_CLIENT_SECRET는 시크릿으로 설정:
+# 시크릿으로 설정 (vars에 넣지 말 것):
 # wrangler secret put GOOGLE_CLIENT_SECRET
+# wrangler secret put SESSION_KEY   ← 세션 쿠키 AES-GCM 암호화 키
