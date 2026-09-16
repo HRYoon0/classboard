@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { IoMic, IoMicOff, IoNotifications, IoNotificationsOff } from 'react-icons/io5';
+import { primeAlarm, playAlarm } from '../../utils/sound';
+
+const BELL_SOUND = '/sounds/alarm2.mp3';
 
 interface Props {
   config: Record<string, unknown>;
@@ -16,18 +19,23 @@ export default function NoiseMeterWidget({ config, onConfigChange }: Props) {
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number>(0);
   const wasOverRef = useRef(false);
+  const ctxRef = useRef<AudioContext | null>(null);
+
   // 종소리 재생 (맑은 벨 효과음)
   const playBell = useCallback(() => {
     if (!bellEnabled) return;
-    const audio = new Audio('/sounds/alarm2.mp3');
-    audio.play().catch(() => {});
+    playAlarm(BELL_SOUND);
   }, [bellEnabled]);
 
   const start = async () => {
+    // 종은 소음이 커진 시점(사용자 제스처 없음)에 울린다.
+    // 마이크 켜기 버튼을 누른 지금 재생 권한을 미리 따 둔다.
+    primeAlarm(BELL_SOUND);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       const ctx = new AudioContext();
+      ctxRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
@@ -54,6 +62,10 @@ export default function NoiseMeterWidget({ config, onConfigChange }: Props) {
   const stop = () => {
     cancelAnimationFrame(rafRef.current);
     streamRef.current?.getTracks().forEach((t) => t.stop());
+    // 닫지 않으면 껐다 켤 때마다 컨텍스트가 쌓여 탭당 상한에 걸리고,
+    // 그 뒤로는 마이크 분석 자체가 실패한다.
+    ctxRef.current?.close().catch(() => {});
+    ctxRef.current = null;
     setIsActive(false);
     setLevel(0);
   };
@@ -74,6 +86,8 @@ export default function NoiseMeterWidget({ config, onConfigChange }: Props) {
     return () => {
       cancelAnimationFrame(rafRef.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
+      ctxRef.current?.close().catch(() => {});
+      ctxRef.current = null;
     };
   }, []);
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { IoPlay, IoStop, IoRefresh, IoFlame, IoCafe, IoSparkles } from 'react-icons/io5';
 import { useContainerScale } from '../../hooks/useContainerScale';
+import { primeAlarm, playAlarm } from '../../utils/sound';
 
 interface Props {
   config: Record<string, unknown>;
@@ -21,6 +22,20 @@ const PHASE_LABELS: Record<Phase, string> = {
   longBreak: '긴 휴식',
 };
 
+// 집중 종료 → 부드러운 맑은 벨, 휴식 종료 → 활기찬 게임 차임
+const PHASE_END_SOUND: Record<Phase, string> = {
+  focus: '/sounds/alarm2.mp3',
+  break: '/sounds/alarm3.mp3',
+  longBreak: '/sounds/alarm3.mp3',
+};
+
+/** 페이즈가 끝났을 때 다음 페이즈와 누적 카운트를 계산한다. 집중 4회마다 긴 휴식. */
+function advancePhase(ended: Phase, count: number): { phase: Phase; count: number } {
+  if (ended !== 'focus') return { phase: 'focus', count };
+  const next = count + 1;
+  return { phase: next % 4 === 0 ? 'longBreak' : 'break', count: next };
+}
+
 export default function PomodoroWidget({ config, onConfigChange }: Props) {
   const focusMin = (config.focusMin as number) || 25;
   const breakMin = (config.breakMin as number) || 5;
@@ -32,7 +47,9 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [count, setCount] = useState(savedCount);
   const [showSetup, setShowSetup] = useState(false);
-  const intervalRef = useRef<number | null>(null);
+  // 0에 닿은 페이즈를 신호로 남긴다. 페이즈 전환·알람은 렌더가 끝난 뒤 effect에서 처리한다.
+  const [endedPhase, setEndedPhase] = useState<Phase | null>(null);
+  const deadlineRef = useRef(0);
 
   const { containerRef, scale: containerScale } = useContainerScale(280, 420);
 
@@ -42,49 +59,43 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
     return longBreakMin * 60;
   }, [focusMin, breakMin, longBreakMin]);
 
-  // 페이즈별 다른 알림음
-  const playAlarm = useCallback((currentPhase: Phase) => {
-    // 집중 종료 → 부드러운 맑은 벨, 휴식 종료 → 활기찬 게임 차임
-    const soundFile = currentPhase === 'focus' ? '/sounds/alarm2.mp3' : '/sounds/alarm3.mp3';
-    const audio = new Audio(soundFile);
-    audio.play().catch(() => {});
-  }, []);
-
-  // 다음 페이즈로 자동 전환
-  const nextPhase = useCallback(() => {
-    playAlarm(phase);
-    if (phase === 'focus') {
-      const newCount = count + 1;
-      setCount(newCount);
-      onConfigChange({ ...config, pomodoroCount: newCount });
-      if (newCount % 4 === 0) {
-        setPhase('longBreak');
-        setTotalSeconds(longBreakMin * 60);
-      } else {
-        setPhase('break');
-        setTotalSeconds(breakMin * 60);
-      }
-    } else {
-      setPhase('focus');
-      setTotalSeconds(focusMin * 60);
-    }
-    setIsRunning(true);
-  }, [phase, count, focusMin, breakMin, longBreakMin, playAlarm, config, onConfigChange]);
-
   useEffect(() => {
-    if (isRunning && totalSeconds > 0) {
-      intervalRef.current = window.setInterval(() => {
-        setTotalSeconds((prev) => {
-          if (prev <= 1) {
-            nextPhase();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (!isRunning || totalSeconds <= 0) return;
+    // 남은 시간을 1초씩 빼지 않고 "끝나는 시각"에서 역산한다.
+    // setInterval은 탭이 뒤로 가면 1분에 한 번까지 느려져서, 1초씩 빼는 방식은
+    // 25분 페이즈가 벽시계보다 한참 늦게 끝난다.
+    deadlineRef.current = Date.now() + totalSeconds * 1000;
+    const id = window.setInterval(() => {
+      const left = Math.max(0, Math.round((deadlineRef.current - Date.now()) / 1000));
+      setTotalSeconds(left);
+      if (left === 0) {
+        window.clearInterval(id);
+        setEndedPhase(phase);
+      }
+    }, 250);
+    return () => clearInterval(id);
+    // config에 의존하는 콜백을 deps에 넣으면 자동 저장 때마다 인터벌이 재생성돼
+    // 카운트다운이 계속 리셋된다. 시작/페이즈 전환 때만 다시 건다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRunning, phase]);
+
+  // 페이즈 종료 처리 — 알람은 렌더 단계(state updater) 안이 아니라 여기서 울린다.
+  // updater 안에서 호출하면 StrictMode의 이중 실행으로 소리가 두 번 겹치고
+  // onConfigChange도 두 번 나간다.
+  useEffect(() => {
+    if (!endedPhase) return;
+    playAlarm(PHASE_END_SOUND[endedPhase]);
+    const next = advancePhase(endedPhase, count);
+    if (next.count !== count) {
+      setCount(next.count);
+      onConfigChange({ ...config, pomodoroCount: next.count });
     }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isRunning, nextPhase]);
+    setPhase(next.phase);
+    setTotalSeconds(getPhaseSeconds(next.phase));
+    setIsRunning(true);
+    setEndedPhase(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endedPhase]);
 
   // 클라우드 로드 등으로 시간 설정 변경 시 — 실행 중이 아니면 현재 페이즈 시간 갱신
   useEffect(() => {
@@ -225,7 +236,15 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
           {/* 버튼 */}
           <div style={{ display: 'flex', gap: 10 }}>
             <button
-              onClick={() => setIsRunning(!isRunning)}
+              onClick={() => {
+                // 알람이 울릴 때쯤(25분 뒤)이면 사용자 제스처가 만료돼 재생이 차단될 수 있다.
+                // 확실한 제스처인 지금 두 알림음 모두 재생 권한을 따 둔다.
+                if (!isRunning) {
+                  primeAlarm(PHASE_END_SOUND.focus);
+                  primeAlarm(PHASE_END_SOUND.break);
+                }
+                setIsRunning(!isRunning);
+              }}
               style={{
                 width: 48, height: 48, borderRadius: '50%', border: 'none',
                 background: isRunning ? '#fef2f2' : `${phaseColor}15`,
