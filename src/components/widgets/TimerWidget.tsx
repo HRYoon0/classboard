@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { IoPlay, IoStop, IoRefresh } from 'react-icons/io5';
 import { useContainerScale } from '../../hooks/useContainerScale';
+import { primeAlarm, playAlarm } from '../../utils/sound';
 
 const ALARM_SOUNDS: Record<string, string> = {
   alarm1: '/sounds/alarm1.mp3',
@@ -26,51 +27,33 @@ export default function TimerWidget({ config, onConfigChange }: Props) {
   const [totalSeconds, setTotalSeconds] = useState(totalInitial);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
-  const intervalRef = useRef<number | null>(null);
-
-  const playAlarm = useCallback(() => {
-    const file = ALARM_SOUNDS[selectedSound];
-    if (file) {
-      const audio = new Audio(file);
-      audio.play().catch(() => {});
-    } else {
-      try {
-        const ctx = new AudioContext();
-        const playBeep = (time: number, freq: number) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.frequency.value = freq;
-          gain.gain.value = 0.3;
-          osc.start(time);
-          osc.stop(time + 0.2);
-        };
-        for (let i = 0; i < 6; i++) {
-          playBeep(ctx.currentTime + i * 0.35, i % 2 === 0 ? 880 : 660);
-        }
-      } catch { /* 오디오 미지원 */ }
-    }
-  }, [selectedSound]);
+  const deadlineRef = useRef(0);
 
   useEffect(() => {
-    if (isRunning && totalSeconds > 0) {
-      intervalRef.current = window.setInterval(() => {
-        setTotalSeconds((prev) => {
-          if (prev <= 1) {
-            setIsRunning(false);
-            setIsFinished(true);
-            playAlarm();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isRunning, playAlarm]);
+    if (!isRunning || totalSeconds <= 0) return;
+    // 남은 시간을 1초씩 빼지 않고 "끝나는 시각"에서 역산한다.
+    // setInterval은 탭이 뒤로 가면 1분에 한 번까지 느려져서, 1초씩 빼는 방식은
+    // 벽시계보다 한참 늦게 0에 닿는다("다 됐는데 안 울린다"의 원인).
+    deadlineRef.current = Date.now() + totalSeconds * 1000;
+    const id = window.setInterval(() => {
+      const left = Math.max(0, Math.round((deadlineRef.current - Date.now()) / 1000));
+      setTotalSeconds(left);
+      if (left === 0) {
+        setIsRunning(false);
+        setIsFinished(true);
+      }
+    }, 250);
+    return () => clearInterval(id);
+    // totalSeconds는 시작 시점의 값만 필요하다(넣으면 매 틱마다 인터벌이 새로 생긴다).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRunning]);
+
+  // 알람은 렌더 단계(state updater) 안이 아니라 여기서 울린다.
+  // updater 안에서 호출하면 StrictMode의 이중 실행으로 소리가 두 번 겹친다.
+  useEffect(() => {
+    if (isFinished) playAlarm(ALARM_SOUNDS[selectedSound] ?? ALARM_SOUNDS.alarm1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFinished]);
 
   // 클라우드 로드/외부 변경으로 config가 바뀌었을 때 — 실행 중이 아니면 시간 동기화
   useEffect(() => {
@@ -141,8 +124,11 @@ export default function TimerWidget({ config, onConfigChange }: Props) {
         </svg>
         <button
           onClick={() => {
-            if (isFinished) reset();
-            else setIsRunning(!isRunning);
+            if (isFinished) { reset(); return; }
+            // 알람이 울릴 때쯤이면 사용자 제스처가 만료돼 재생이 차단될 수 있다.
+            // 확실한 제스처인 지금 재생 권한을 미리 따 둔다.
+            if (!isRunning) primeAlarm(ALARM_SOUNDS[selectedSound] ?? ALARM_SOUNDS.alarm1);
+            setIsRunning(!isRunning);
           }}
           className="absolute inset-0 flex items-center justify-center"
         >

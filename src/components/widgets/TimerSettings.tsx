@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { IoVolumeHigh } from 'react-icons/io5';
+import { playAlarm } from '../../utils/sound';
 
 const ALARM_SOUNDS = [
   { id: 'alarm1', label: '초인종', file: '/sounds/alarm1.mp3' },
@@ -42,23 +43,8 @@ export default function TimerSettings({ config, onConfigChange }: Props) {
       };
     } else {
       setPreviewingId(soundId);
-      try {
-        const ctx = new AudioContext();
-        const playBeep = (time: number, freq: number) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.frequency.value = freq;
-          gain.gain.value = 0.3;
-          osc.start(time);
-          osc.stop(time + 0.2);
-        };
-        for (let i = 0; i < 6; i++) {
-          playBeep(ctx.currentTime + i * 0.35, i % 2 === 0 ? 880 : 660);
-        }
-        setTimeout(() => setPreviewingId(null), 2200);
-      } catch { setPreviewingId(null); }
+      playAlarm('');
+      setTimeout(() => setPreviewingId(null), 2200);
     }
   };
 
