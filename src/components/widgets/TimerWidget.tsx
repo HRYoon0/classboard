@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { IoPlay, IoStop, IoRefresh } from 'react-icons/io5';
 import { useContainerScale } from '../../hooks/useContainerScale';
-import { primeAlarm, playAlarm } from '../../utils/sound';
+import { primeAlarm, playAlarm, scheduleAlarm } from '../../utils/sound';
 
 const ALARM_SOUNDS: Record<string, string> = {
   alarm1: '/sounds/alarm1.mp3',
@@ -35,15 +35,28 @@ export default function TimerWidget({ config, onConfigChange }: Props) {
     // setInterval은 탭이 뒤로 가면 1분에 한 번까지 느려져서, 1초씩 빼는 방식은
     // 벽시계보다 한참 늦게 0에 닿는다("다 됐는데 안 울린다"의 원인).
     deadlineRef.current = Date.now() + totalSeconds * 1000;
-    const id = window.setInterval(() => {
+
+    // 알람은 지금 예약해 둔다. 인터벌이 스로틀링돼도 소리는 제때 난다.
+    const cancelAlarm = scheduleAlarm(ALARM_SOUNDS[selectedSound] ?? ALARM_SOUNDS.alarm1, totalSeconds);
+
+    const tick = () => {
       const left = Math.max(0, Math.round((deadlineRef.current - Date.now()) / 1000));
       setTotalSeconds(left);
       if (left === 0) {
         setIsRunning(false);
         setIsFinished(true);
       }
-    }, 250);
-    return () => clearInterval(id);
+    };
+    const id = window.setInterval(tick, 250);
+    // 숨겨진 동안 인터벌이 느려져 표시가 밀려 있다. 돌아오는 즉시 맞춘다.
+    const onVisible = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+      cancelAlarm();
+    };
     // totalSeconds는 시작 시점의 값만 필요하다(넣으면 매 틱마다 인터벌이 새로 생긴다).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRunning]);

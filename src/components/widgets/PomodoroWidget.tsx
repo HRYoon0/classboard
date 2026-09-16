@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { IoPlay, IoStop, IoRefresh, IoFlame, IoCafe, IoSparkles } from 'react-icons/io5';
 import { useContainerScale } from '../../hooks/useContainerScale';
-import { primeAlarm, playAlarm } from '../../utils/sound';
+import { primeAlarm, playAlarm, scheduleAlarm } from '../../utils/sound';
 
 interface Props {
   config: Record<string, unknown>;
@@ -65,15 +65,28 @@ export default function PomodoroWidget({ config, onConfigChange }: Props) {
     // setInterval은 탭이 뒤로 가면 1분에 한 번까지 느려져서, 1초씩 빼는 방식은
     // 25분 페이즈가 벽시계보다 한참 늦게 끝난다.
     deadlineRef.current = Date.now() + totalSeconds * 1000;
-    const id = window.setInterval(() => {
+
+    // 알람은 지금 예약해 둔다. 인터벌이 스로틀링돼도 소리는 제때 난다.
+    const cancelAlarm = scheduleAlarm(PHASE_END_SOUND[phase], totalSeconds);
+
+    const tick = () => {
       const left = Math.max(0, Math.round((deadlineRef.current - Date.now()) / 1000));
       setTotalSeconds(left);
       if (left === 0) {
         window.clearInterval(id);
         setEndedPhase(phase);
       }
-    }, 250);
-    return () => clearInterval(id);
+    };
+    const id = window.setInterval(tick, 250);
+    // 숨겨진 동안 인터벌이 느려져 표시가 밀려 있다. 돌아오는 즉시 맞춘다.
+    const onVisible = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+      cancelAlarm();
+    };
     // config에 의존하는 콜백을 deps에 넣으면 자동 저장 때마다 인터벌이 재생성돼
     // 카운트다운이 계속 리셋된다. 시작/페이즈 전환 때만 다시 건다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
