@@ -7,6 +7,26 @@ interface Props {
 
 const CONFETTI_COLORS = ['#6366f1', '#f43f5e', '#22c55e', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#fbbf24'];
 
+interface Particle { tx: number; ty: number; w: number; h: number; duration: number; spin: number }
+
+// 파티클은 폭죽이 터지는 순간에만 뽑는다. 렌더 중에 Math.random()을 부르면
+// 결과 표시 중 리렌더가 일어날 때마다 진행 중인 파티클의 크기·속도가
+// 갈아끼워져 애니메이션이 튄다.
+function makeParticles(): Particle[] {
+  return Array.from({ length: 60 }, (_, i) => {
+    const angle = (i / 60) * 360;
+    const speed = 80 + Math.random() * 120;
+    return {
+      tx: Math.cos((angle * Math.PI) / 180) * speed,
+      ty: Math.sin((angle * Math.PI) / 180) * speed - 50,
+      w: 4 + Math.random() * 6,
+      h: 4 + Math.random() * 6,
+      duration: 0.8 + Math.random() * 0.8,
+      spin: Math.random() * 720 - 360,
+    };
+  });
+}
+
 export default function RandomNameWidget({ config, onConfigChange }: Props) {
   const nameList = (config.names as string) || '';
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -14,6 +34,7 @@ export default function RandomNameWidget({ config, onConfigChange }: Props) {
   const [phase, setPhase] = useState<'idle' | 'spinning' | 'slowing' | 'result'>('idle');
   const [showInput, setShowInput] = useState(!nameList);
   const [confettiWave, setConfettiWave] = useState(0);
+  const [confetti, setConfetti] = useState<Particle[]>([]);
   const [spinColor, setSpinColor] = useState('#94a3b8');
   const timeoutChain = useRef<number[]>([]);
 
@@ -28,9 +49,13 @@ export default function RandomNameWidget({ config, onConfigChange }: Props) {
     .filter(Boolean);
 
   const spawnConfetti = useCallback(() => {
+    setConfetti(makeParticles());
     setConfettiWave((w) => w + 1);
     // 2차 파티클 (0.5초 후)
-    setTimeout(() => setConfettiWave((w) => w + 1), 500);
+    setTimeout(() => {
+      setConfetti(makeParticles());
+      setConfettiWave((w) => w + 1);
+    }, 500);
   }, []);
 
   const spin = useCallback(() => {
@@ -174,25 +199,19 @@ export default function RandomNameWidget({ config, onConfigChange }: Props) {
       )}
 
       {/* 컨페티 파티클들 */}
-      {phase === 'result' && Array.from({ length: 60 }).map((_, i) => {
-        const angle = (i / 60) * 360;
-        const speed = 80 + Math.random() * 120;
-        const tx = Math.cos(angle * Math.PI / 180) * speed;
-        const ty = Math.sin(angle * Math.PI / 180) * speed - 50;
-        return (
-          <div key={`conf-${confettiWave}-${i}`} style={{
-            position: 'absolute', left: '50%', top: '40%',
-            width: `${4 + Math.random() * 6}px`,
-            height: `${4 + Math.random() * 6}px`,
-            backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-            borderRadius: i % 3 === 0 ? '50%' : i % 3 === 1 ? '1px' : '0',
-            animation: `confetti-explode ${0.8 + Math.random() * 0.8}s ease-out forwards`,
-            '--tx': `${tx}px`, '--ty': `${ty}px`,
-            '--spin': `${Math.random() * 720 - 360}deg`,
-            pointerEvents: 'none',
-          } as React.CSSProperties} />
-        );
-      })}
+      {phase === 'result' && confetti.map((p, i) => (
+        <div key={`conf-${confettiWave}-${i}`} style={{
+          position: 'absolute', left: '50%', top: '40%',
+          width: `${p.w}px`,
+          height: `${p.h}px`,
+          backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+          borderRadius: i % 3 === 0 ? '50%' : i % 3 === 1 ? '1px' : '0',
+          animation: `confetti-explode ${p.duration}s ease-out forwards`,
+          '--tx': `${p.tx}px`, '--ty': `${p.ty}px`,
+          '--spin': `${p.spin}deg`,
+          pointerEvents: 'none',
+        } as React.CSSProperties} />
+      ))}
 
       {/* 이름 표시 영역 */}
       <div style={{

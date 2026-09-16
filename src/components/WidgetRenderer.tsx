@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import type { WidgetData } from '../types/widget';
-import { WIDGET_META } from '../constants';
 import WidgetWrapper from './WidgetWrapper';
 import TimerWidget from './widgets/TimerWidget';
 import TimerSettings from './widgets/TimerSettings';
@@ -95,7 +94,6 @@ export default function WidgetRenderer({
   isSelected,
   onSelect,
 }: Props) {
-  const meta = WIDGET_META[widget.type];
   const configHandler = (config: Record<string, unknown>) => onConfigChange(widget.id, config);
 
   // 위젯별 설정 패널
@@ -119,7 +117,6 @@ export default function WidgetRenderer({
       onUpdate={onUpdate}
       onRemove={onRemove}
       onBringToFront={onBringToFront}
-      title={`${meta.icon} ${meta.label}`}
       settingsPanel={getSettingsPanel()}
       isSelected={isSelected}
       onSelect={onSelect}

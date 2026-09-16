@@ -12,7 +12,6 @@ interface Props {
   onBringToFront: (id: string) => void;
   onConfigChange?: (id: string, config: Record<string, unknown>) => void;
   children: ReactNode;
-  title?: string;
   settingsPanel?: ReactNode;
   isSelected: boolean;
   onSelect: (id: string | null) => void;
@@ -28,7 +27,6 @@ export default function WidgetWrapper({
   onBringToFront,
   onConfigChange,
   children,
-  title: _title,
   settingsPanel,
   isSelected,
   onSelect,
