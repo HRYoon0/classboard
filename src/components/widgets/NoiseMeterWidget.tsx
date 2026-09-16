@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { IoMic, IoMicOff, IoNotifications, IoNotificationsOff } from 'react-icons/io5';
 import { primeAlarm, playAlarm } from '../../utils/sound';
 
@@ -21,11 +21,12 @@ export default function NoiseMeterWidget({ config, onConfigChange }: Props) {
   const wasOverRef = useRef(false);
   const ctxRef = useRef<AudioContext | null>(null);
 
-  // 종소리 재생 (맑은 벨 효과음)
-  const playBell = useCallback(() => {
-    if (!bellEnabled) return;
-    playAlarm(BELL_SOUND);
-  }, [bellEnabled]);
+  // 아래 측정 루프는 start() 시점의 값을 캡처하므로, 슬라이더로 바꾼 설정이
+  // 실행 중에도 반영되도록 최신 값을 ref로 따로 들고 있는다.
+  const thresholdRef = useRef(threshold);
+  const bellEnabledRef = useRef(bellEnabled);
+  useEffect(() => { thresholdRef.current = threshold; }, [threshold]);
+  useEffect(() => { bellEnabledRef.current = bellEnabled; }, [bellEnabled]);
 
   const start = async () => {
     // 종은 소음이 커진 시점(사용자 제스처 없음)에 울린다.
@@ -51,6 +52,17 @@ export default function NoiseMeterWidget({ config, onConfigChange }: Props) {
         const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
         const normalized = Math.min(100, (avg / 128) * 100);
         setLevel(normalized);
+        // 임계값 판정은 여기서 바로 한다. level state가 바뀌길 기다렸다가
+        // effect에서 판정하면 초당 60번 리렌더를 되받는 꼴이 된다.
+        if (normalized > thresholdRef.current) {
+          if (!wasOverRef.current) {
+            wasOverRef.current = true;
+            setOverCount((c) => c + 1);
+            if (bellEnabledRef.current) playAlarm(BELL_SOUND);
+          }
+        } else {
+          wasOverRef.current = false;
+        }
         rafRef.current = requestAnimationFrame(update);
       };
       update();
@@ -69,18 +81,6 @@ export default function NoiseMeterWidget({ config, onConfigChange }: Props) {
     setIsActive(false);
     setLevel(0);
   };
-
-  // 임계값 초과 감지 + 종소리
-  useEffect(() => {
-    if (!isActive) return;
-    if (level > threshold && !wasOverRef.current) {
-      wasOverRef.current = true;
-      setOverCount((c) => c + 1);
-      playBell();
-    } else if (level <= threshold) {
-      wasOverRef.current = false;
-    }
-  }, [level, threshold, isActive, playBell]);
 
   useEffect(() => {
     return () => {
