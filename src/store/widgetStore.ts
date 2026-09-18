@@ -20,6 +20,8 @@ type Action =
   | { type: 'ADD_PAGE' }
   | { type: 'REMOVE_PAGE' }
   | { type: 'SWITCH_PAGE'; index: number }
+  | { type: 'REORDER_PAGE'; from: number; to: number }
+  | { type: 'RENAME_PAGE'; index: number; name: string }
   | { type: 'LOAD_ALL'; pages: PageData[] };
 
 function getMaxZ(widgets: WidgetData[]) {
@@ -116,6 +118,28 @@ function reducer(state: StoreState, action: Action): StoreState {
     case 'SWITCH_PAGE': {
       if (action.index < 0 || action.index >= state.pages.length) return state;
       return { ...state, currentPageIndex: action.index };
+    }
+    case 'REORDER_PAGE': {
+      const { from, to } = action;
+      const last = state.pages.length - 1;
+      if (from === to || from < 0 || to < 0 || from > last || to > last) return state;
+      // 보던 보드의 id를 기억했다가 옮긴 뒤 다시 찾는다.
+      // 인덱스를 직접 보정하면 from/to 위치에 따라 ±1 분기가 네 갈래로 늘어난다.
+      const currentId = state.pages[state.currentPageIndex]?.id;
+      const pages = [...state.pages];
+      const [moved] = pages.splice(from, 1);
+      pages.splice(to, 0, moved);
+      const found = pages.findIndex((p) => p.id === currentId);
+      return { pages, currentPageIndex: found === -1 ? state.currentPageIndex : found };
+    }
+    case 'RENAME_PAGE': {
+      if (action.index < 0 || action.index >= state.pages.length) return state;
+      // 입력값은 그대로 보관한다. 여기서 trim 하면 타이핑 도중의 끝 공백이
+      // 매 글자마다 잘려나가 "1교시 국어"가 "1교시국어"가 된다.
+      // 공백뿐인 이름만 지운 것으로 보고 순번 표시로 되돌린다
+      const name = action.name.trim() ? action.name : undefined;
+      const pages = state.pages.map((p, i) => (i === action.index ? { ...p, name } : p));
+      return { ...state, pages };
     }
     case 'LOAD_ALL':
       return { pages: action.pages, currentPageIndex: 0 };
@@ -284,6 +308,14 @@ export function useWidgetStore() {
     dispatch({ type: 'SWITCH_PAGE', index });
   }, []);
 
+  const reorderPage = useCallback((from: number, to: number) => {
+    dispatch({ type: 'REORDER_PAGE', from, to });
+  }, []);
+
+  const renamePage = useCallback((index: number, name: string) => {
+    dispatch({ type: 'RENAME_PAGE', index, name });
+  }, []);
+
   const loadAllPages = useCallback((p: PageData[]) => {
     dispatch({ type: 'LOAD_ALL', pages: p });
   }, []);
@@ -303,6 +335,8 @@ export function useWidgetStore() {
     addPage,
     removePage,
     switchPage,
+    reorderPage,
+    renamePage,
     loadAllPages,
   };
 }

@@ -6,6 +6,7 @@ import BackgroundPicker from './components/BackgroundPicker';
 import WidgetRenderer from './components/WidgetRenderer';
 import PageNavigator from './components/PageNavigator';
 import { useCanvasScale } from './hooks/useCanvasScale';
+import { bgStyle } from './utils/bgStyle';
 import type { PageData } from './types/widget';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -33,6 +34,8 @@ function App() {
     addPage,
     removePage,
     switchPage,
+    reorderPage,
+    renamePage,
     loadAllPages,
   } = useWidgetStore();
 
@@ -259,14 +262,8 @@ function App() {
     switchPage(index);
   };
 
-  const bgStyle: React.CSSProperties = background.startsWith('url(')
-    ? { backgroundImage: background, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : background.startsWith('linear-gradient')
-      ? { background }
-      : { backgroundColor: background };
-
   return (
-    <div className="w-full h-full relative overflow-hidden" style={bgStyle} onMouseDown={() => setSelectedWidgetId(null)}>
+    <div className="w-full h-full relative overflow-hidden" style={bgStyle(background)} onMouseDown={() => setSelectedWidgetId(null)}>
 
       {/* 오른쪽 상단 버튼들 */}
       <div className="absolute top-4 right-4 z-[9999] flex items-center gap-2">
@@ -374,12 +371,16 @@ function App() {
       )}
 
       <PageNavigator
+        pages={pages}
         currentPage={currentPageIndex}
         totalPages={totalPages}
         onPrev={() => handleSwitchPage(currentPageIndex - 1)}
         onNext={() => handleSwitchPage(currentPageIndex + 1)}
         onAdd={addPage}
         onRemove={removePage}
+        onSwitch={handleSwitchPage}
+        onReorder={reorderPage}
+        onRename={renamePage}
       />
 
       <div style={{

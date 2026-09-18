@@ -3,7 +3,7 @@
 export interface CloudData {
   widgets?: unknown[];
   background?: string;
-  pages?: { id: string; widgets: unknown[]; background: string }[];
+  pages?: { id: string; name?: string; widgets: unknown[]; background: string }[];
   version?: number;
   widgetConfigs?: Record<string, Record<string, unknown>>;
 }
